@@ -1,0 +1,80 @@
+[build-system]
+requires = ["setuptools>=62", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "3dcs"
+version = "0.1.0"
+description = "Evaluation tooling and shared metrics for the 3DCS benchmarks."
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.9"
+keywords = ["3d", "benchmark", "chemistry", "evaluation", "3dcs", "molecular-embeddings"]
+authors = [{ name = "3DCS Team" }]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Chemistry",
+]
+dependencies = [
+    "numpy>=1.23",
+    "scipy>=1.9",
+    "pandas>=1.5",
+    "scikit-learn>=1.2",
+    "scikit-learn-extra>=0.3",
+    "lmdb>=1.4",
+    "tqdm>=4.66",
+    "matplotlib!=3.6.1,>=3.4",
+    "e3fp>=1.1",
+    "python-dateutil>=2.8",
+    "datasets>=2.18",
+    "pyarrow>=12",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "pytest-cov>=4.0",
+    "ruff>=0.4",
+    "pre-commit>=3.0",
+]
+
+[project.scripts]
+three-dbench = "three_dbench.__main__:main"
+
+[project.urls]
+Homepage = "https://github.com/EscheWang/3DBench"
+Documentation = "https://github.com/EscheWang/3DBench/tree/main/docs"
+Issues = "https://github.com/EscheWang/3DBench/issues"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-v --tb=short"
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks tests requiring external data or network",
+]
+
+[tool.ruff]
+target-version = "py39"
+line-length = 120
+src = ["src"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B"]
+ignore = ["E501"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["three_dbench"]

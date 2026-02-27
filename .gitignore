@@ -1,0 +1,51 @@
+# Python bytecode and caches
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# Virtual environments
+.env/
+.venv/
+.env*/
+.venv*/
+
+# Jupyter notebooks
+.ipynb_checkpoints/
+
+# Editor settings
+.vscode/
+.idea/
+*.iml
+
+# Testing and coverage
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage*
+htmlcov/
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Local archives
+backups/
+
+# Raw data and results (large files not tracked in git)
+data/
+results/
+
+# Demo cache (downloaded HF datasets)
+examples/.demo_cache/
+
+# Claude Code local settings
+.claude/
