@@ -1,9 +1,9 @@
 """Hugging Face dataset conversion for the trajectory benchmark."""
+
 from __future__ import annotations
 
 import pickle
 from pathlib import Path
-from typing import Iterable, Optional
 
 import datasets
 import numpy as np

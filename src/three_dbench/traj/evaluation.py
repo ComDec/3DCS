@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Trajectory benchmark evaluation combining distance, energy, and sampling metrics.
 
 The pipeline produces pairwise distances (vector and fingerprint), aligns them with energy
@@ -8,17 +7,20 @@ metrics (EJS, smoothness, TS, KS, W1). The original parallel sampling workflow i
 Dependencies: numpy, scipy, scikit-learn, pandas, rdkit.
 """
 
-import os
-import math
 import json
+import math
+import os
 import pickle
-from dataclasses import dataclass, asdict
+from collections.abc import Iterable
+from dataclasses import asdict, dataclass
 from multiprocessing import Pool, cpu_count
 from pathlib import Path
-from typing import Optional, Literal, Union, Dict, Tuple, Iterable, List, Any
+from typing import Any, Literal, Optional, Union
 
 import numpy as np
 import pandas as pd
+from scipy.special import erfinv
+
 from three_dbench.common.metrics import (
     cka_rbf,
     distance_correlation,
@@ -26,7 +28,8 @@ from three_dbench.common.metrics import (
     kendall_correlation,
     spearman_correlation,
 )
-from three_dbench.utils.paths import DATA_ROOT as GLOBAL_DATA_ROOT, RESULTS_ROOT as GLOBAL_RESULTS_ROOT
+from three_dbench.utils.paths import DATA_ROOT as GLOBAL_DATA_ROOT
+from three_dbench.utils.paths import RESULTS_ROOT as GLOBAL_RESULTS_ROOT
 
 # ============================================================
 # Common type aliases
@@ -37,32 +40,35 @@ ArrayLike = Union[np.ndarray, "np.memmap"]
 # ============ 1. Upper-triangular helpers and containers =====
 # ============================================================
 
+
 def _condensed_len(n: int) -> int:
     return n * (n - 1) // 2
 
+
 def n_from_condensed_len(m: int) -> int:
-    n = int((1 + math.isqrt(1 + 8*m)) // 2)
-    if n*(n-1)//2 != m:
+    n = int((1 + math.isqrt(1 + 8 * m)) // 2)
+    if n * (n - 1) // 2 != m:
         raise ValueError(f"Invalid condensed length {m}")
     return n
+
 
 def condensed_index(i: int, j: int, n: int) -> int:
     if not (0 <= i < j < n):
         raise IndexError(f"Need 0<=i<j<n, got i={i}, j={j}, n={n}")
     return (n * i) - (i * (i + 1)) // 2 + (j - i - 1)
 
-def _pair_indices_from_n(n: int) -> Tuple[np.ndarray, np.ndarray]:
+
+def _pair_indices_from_n(n: int) -> tuple[np.ndarray, np.ndarray]:
     ii, jj = [], []
-    for i in range(n-1):
+    for i in range(n - 1):
         j0 = i + 1
-        ii.extend([i]*(n - j0))
+        ii.extend([i] * (n - j0))
         jj.extend(range(j0, n))
     return np.asarray(ii, int), np.asarray(jj, int)
 
+
 def expand_condensed_to_square(
-    v: ArrayLike,
-    out: Optional[Union[str, ArrayLike]] = None,
-    dtype=np.float32
+    v: ArrayLike, out: Optional[Union[str, ArrayLike]] = None, dtype=np.float32
 ) -> ArrayLike:
     v = np.asarray(v)
     n = n_from_condensed_len(v.shape[0])
@@ -73,27 +79,29 @@ def expand_condensed_to_square(
     elif isinstance(out, (np.ndarray, np.memmap)):
         M = out
         if M.shape != (n, n):
-            raise ValueError(f"Provided square has shape {M.shape}, expected {(n,n)}")
+            raise ValueError(f"Provided square has shape {M.shape}, expected {(n, n)}")
     else:
         M = np.zeros((n, n), dtype=dtype)
 
     idx = 0
-    for i in range(n-1):
+    for i in range(n - 1):
         cnt = n - i - 1
-        block = v[idx:idx+cnt].astype(dtype, copy=False)
-        M[i, i+1:] = block
-        M[i+1:, i] = block
+        block = v[idx : idx + cnt].astype(dtype, copy=False)
+        M[i, i + 1 :] = block
+        M[i + 1 :, i] = block
         idx += cnt
     np.fill_diagonal(M, 0.0)
     return M
+
 
 def _condensed_row_start(n: int) -> np.ndarray:
     i = np.arange(n, dtype=np.int64)
     return (n * i - i * (i + 1) // 2).astype(np.int64)
 
+
 def allocate_out_container(
     n: int,
-    mode: Literal["condensed","square"] = "condensed",
+    mode: Literal["condensed", "square"] = "condensed",
     dtype: np.dtype = np.float16,
     out: Optional[Union[str, ArrayLike]] = None,
 ) -> ArrayLike:
@@ -116,14 +124,17 @@ def allocate_out_container(
 
     return np.zeros(shape, dtype=dtype)
 
+
 def _write_block_to_condensed(
     out_cond: ArrayLike,
-    block: np.ndarray,     # (bi_len, bj_len)
+    block: np.ndarray,  # (bi_len, bj_len)
     n: int,
-    i0: int, i1: int,
-    j0: int, j1: int,
+    i0: int,
+    i1: int,
+    j0: int,
+    j1: int,
     starts: np.ndarray,
-    cast_dtype: np.dtype = np.float16
+    cast_dtype: np.dtype = np.float16,
 ):
     bi_len, _ = block.shape
     for ii in range(bi_len):
@@ -137,23 +148,25 @@ def _write_block_to_condensed(
             continue
         base = int(starts[gi])
         idx0 = base + (start_j - gi - 1)
-        out_cond[idx0: idx0 + length] = block[ii, jj0: jj0 + length].astype(cast_dtype, copy=False)
+        out_cond[idx0 : idx0 + length] = block[ii, jj0 : jj0 + length].astype(cast_dtype, copy=False)
+
 
 # ============================================================
 # ============ 2. Continuous embedding distances (scaled) ======
 # ============================================================
 
+
 def pairwise_distances_from_embeddings_large(
     Z: np.ndarray,
-    metric: Literal["euclidean","cosine"] = "cosine",
+    metric: Literal["euclidean", "cosine"] = "cosine",
     unit_normalize: bool = True,
     block_size: int = 4096,
-    out_mode: Literal["condensed","square"] = "condensed",
+    out_mode: Literal["condensed", "square"] = "condensed",
     out: Optional[Union[str, ArrayLike]] = None,
     dtype_out: np.dtype = np.float16,
     compute_dtype: np.dtype = np.float32,
     progress: bool = True,
-    compress_to_npz: Optional[str] = None
+    compress_to_npz: Optional[str] = None,
 ) -> ArrayLike:
     """Normalize pairwise distances to the [0, 1] range.
 
@@ -182,11 +195,13 @@ def pairwise_distances_from_embeddings_large(
     global_min, global_max = np.inf, -np.inf
     if need_minmax_scan:
         for bi in range(n_blocks):
-            i0 = bi * block_size; i1 = min(n, (bi + 1) * block_size)
+            i0 = bi * block_size
+            i1 = min(n, (bi + 1) * block_size)
             Xi = X[i0:i1]
             sq_i = (Xi * Xi).sum(axis=1, keepdims=True)
             for bj in range(bi, n_blocks):
-                j0 = bj * block_size; j1 = min(n, (bj + 1) * block_size)
+                j0 = bj * block_size
+                j1 = min(n, (bj + 1) * block_size)
                 Xj = X[j0:j1]
                 sq_j = (Xj * Xj).sum(axis=1, keepdims=True).T
                 G = Xi @ Xj.T
@@ -205,7 +220,8 @@ def pairwise_distances_from_embeddings_large(
             global_min, global_max = 0.0, 1.0
 
     for bi in range(n_blocks):
-        i0 = bi * block_size; i1 = min(n, (bi + 1) * block_size)
+        i0 = bi * block_size
+        i1 = min(n, (bi + 1) * block_size)
         Xi = X[i0:i1]
 
         if metric == "euclidean":
@@ -214,7 +230,8 @@ def pairwise_distances_from_embeddings_large(
             ni = np.linalg.norm(Xi, axis=1, keepdims=True) + 1e-12
 
         for bj in range(bi, n_blocks):
-            j0 = bj * block_size; j1 = min(n, (bj + 1) * block_size)
+            j0 = bj * block_size
+            j1 = min(n, (bj + 1) * block_size)
             Xj = X[j0:j1]
 
             if metric == "euclidean":
@@ -244,14 +261,16 @@ def pairwise_distances_from_embeddings_large(
                 else:
                     diag_len = i1 - i0
                     if diag_len > 0:
-                        out_arr[i0:i1, i0:i1].flat[::diag_len+1] = dtype_out.type(0.0)
+                        out_arr[i0:i1, i0:i1].flat[:: diag_len + 1] = dtype_out.type(0.0)
             else:
                 _write_block_to_condensed(out_arr, Dij01, n, i0, i1, j0, j1, starts, cast_dtype=dtype_out)
 
             block_cnt += 1
             if progress and (block_cnt % 10 == 0 or block_cnt == total_blocks):
-                print(f"[pairwise:{metric}->[0,1]] blocks {block_cnt}/{total_blocks} "
-                      f"({bi+1}/{n_blocks} x {bj+1}/{n_blocks})")
+                print(
+                    f"[pairwise:{metric}->[0,1]] blocks {block_cnt}/{total_blocks} "
+                    f"({bi + 1}/{n_blocks} x {bj + 1}/{n_blocks})"
+                )
 
     if isinstance(compress_to_npz, str):
         arr = np.array(out_arr, copy=False) if isinstance(out_arr, np.memmap) else out_arr
@@ -261,18 +280,20 @@ def pairwise_distances_from_embeddings_large(
 
     return out_arr
 
+
 # ============================================================
 # ============ 3. Fingerprint Tanimoto distance (blocked) =====
 # ============================================================
 
+
 def pairwise_tanimoto_fps_large(
     fps: list,
     block_size: int = 4096,
-    out_mode: Literal["condensed","square"] = "condensed",
+    out_mode: Literal["condensed", "square"] = "condensed",
     out: Optional[Union[str, ArrayLike]] = None,
     dtype_out: np.dtype = np.float16,
     progress: bool = True,
-    compress_to_npz: Optional[str] = None
+    compress_to_npz: Optional[str] = None,
 ) -> ArrayLike:
     from rdkit import DataStructs
 
@@ -290,11 +311,13 @@ def pairwise_tanimoto_fps_large(
                 out_arr[i, i] = dtype_out.type(0.0)
 
     for bi in range(n_blocks):
-        i0 = bi * block_size; i1 = min(n, (bi + 1) * block_size)
+        i0 = bi * block_size
+        i1 = min(n, (bi + 1) * block_size)
         Fi = fps[i0:i1]
 
         for bj in range(bi, n_blocks):
-            j0 = bj * block_size; j1 = min(n, (bj + 1) * block_size)
+            j0 = bj * block_size
+            j1 = min(n, (bj + 1) * block_size)
             Fj = fps[j0:j1]
 
             sim_block = np.empty((i1 - i0, j1 - j0), dtype=np.float32)
@@ -302,7 +325,7 @@ def pairwise_tanimoto_fps_large(
                 sims = DataStructs.BulkTanimotoSimilarity(fpi, Fj)
                 sim_block[ii, :] = np.asarray(sims, dtype=np.float32)
 
-            Dij = (1.0 - sim_block)
+            Dij = 1.0 - sim_block
 
             if out_mode == "square":
                 out_arr[i0:i1, j0:j1] = Dij.astype(dtype_out, copy=False)
@@ -313,8 +336,9 @@ def pairwise_tanimoto_fps_large(
 
             block_cnt += 1
             if progress and (block_cnt % 10 == 0 or block_cnt == total_blocks):
-                print(f"[pairwise:tanimoto] blocks {block_cnt}/{total_blocks} "
-                      f"({bi+1}/{n_blocks} x {bj+1}/{n_blocks})")
+                print(
+                    f"[pairwise:tanimoto] blocks {block_cnt}/{total_blocks} ({bi + 1}/{n_blocks} x {bj + 1}/{n_blocks})"
+                )
 
     if isinstance(compress_to_npz, str):
         arr = np.array(out_arr, copy=False) if isinstance(out_arr, np.memmap) else out_arr
@@ -324,21 +348,26 @@ def pairwise_tanimoto_fps_large(
 
     return out_arr
 
+
 # ============================================================
 # ============ 4. Geometric alignment metrics =================
 # ============================================================
+
 
 def spearman_from_condensed(D1: ArrayLike, D2: ArrayLike) -> float:
     """Compatibility wrapper using the shared Spearman implementation."""
     return spearman_correlation(D1, D2)
 
+
 def kendall_from_condensed(D1: ArrayLike, D2: ArrayLike) -> float:
     """Compatibility wrapper using the shared Kendall implementation."""
     return kendall_correlation(D1, D2)
 
+
 def isotonic_r2_from_condensed(D_ref: ArrayLike, D_emb: ArrayLike) -> float:
     """Compatibility wrapper for the shared isotonic R^2 routine."""
     return isotonic_r2(D_ref, D_emb)
+
 
 def cka_rbf_from_condensed(
     D1_cond: ArrayLike,
@@ -358,13 +387,16 @@ def cka_rbf_from_condensed(
     _ = (expand_memmap1, expand_memmap2, in_mem_threshold)
     return cka_rbf(D1_cond, D2_cond, sigma_a=sigma1, sigma_b=sigma2, share_sigma=shared_sigma)
 
+
 def distance_correlation_from_condensed(x: ArrayLike, y: ArrayLike) -> float:
     """Compatibility wrapper for the shared distance correlation implementation."""
     return distance_correlation(x, y)
 
+
 # ============================================================
 # ============ 5. Energy-derived references and metrics =======
 # ============================================================
+
 
 def vector_to_absdiff_condensed(x: np.ndarray, dtype=np.float32) -> np.ndarray:
     x = np.asarray(x, dtype=np.float64).reshape(-1)
@@ -373,33 +405,38 @@ def vector_to_absdiff_condensed(x: np.ndarray, dtype=np.float32) -> np.ndarray:
         return np.array([], dtype=dtype)
     i_idx = []
     j_idx = []
-    for i in range(n-1):
+    for i in range(n - 1):
         j0 = i + 1
         cnt = n - j0
-        i_idx.extend([i]*cnt)
+        i_idx.extend([i] * cnt)
         j_idx.extend(range(j0, n))
     i_idx = np.asarray(i_idx, dtype=np.int64)
     j_idx = np.asarray(j_idx, dtype=np.int64)
     v = np.abs(x[i_idx] - x[j_idx]).astype(dtype, copy=False)
     return v
 
+
 def energy_diff_condensed(E: np.ndarray) -> np.ndarray:
     E = np.asarray(E, float).reshape(-1)
     n = E.size
     ii, jj = [], []
-    for i in range(n-1):
+    for i in range(n - 1):
         j0 = i + 1
-        ii.extend([i]*(n-j0)); jj.extend(range(j0, n))
-    ii = np.asarray(ii, int); jj = np.asarray(jj, int)
+        ii.extend([i] * (n - j0))
+        jj.extend(range(j0, n))
+    ii = np.asarray(ii, int)
+    jj = np.asarray(jj, int)
     return np.abs(E[ii] - E[jj])
 
+
 # ---- EJS ----
-from scipy.special import erfinv
+
 
 def _lam_tag(lam: float) -> str:
     """Convert lambda to safe key tag: 0.5 -> '0p5', 2 -> '2'."""
     s = f"{lam:g}"
-    return s.replace('.', 'p').replace('-', 'm')
+    return s.replace(".", "p").replace("-", "m")
+
 
 def energy_jump_sensitivity_auto(
     E: np.ndarray,
@@ -410,7 +447,7 @@ def energy_jump_sensitivity_auto(
     winsor: float = 0.0,  # optional winsorization of E
     dist_quantile: float = 0.75,  # quantile for distance threshold tau
     use_global_quantile: bool = True,  # use global delta quantile or jump subset
-) -> Dict[str, float]:
+) -> dict[str, float]:
     E = np.asarray(E, float).reshape(-1)
     Delta_cond = np.asarray(Delta_cond, float).reshape(-1)
 
@@ -432,8 +469,8 @@ def energy_jump_sensitivity_auto(
 
     # Pairwise differences
     ii, jj = _pair_indices_from_n(n)
-    dE = np.abs(E[ii] - E[jj])      # |delta E|
-    dZ = Delta_cond                 # delta
+    dE = np.abs(E[ii] - E[jj])  # |delta E|
+    dZ = Delta_cond  # delta
 
     valid = np.isfinite(dE) & np.isfinite(dZ)
     if valid.sum() == 0:
@@ -447,20 +484,20 @@ def energy_jump_sensitivity_auto(
 
     # Lambda grid processing
     lam_list = list(lam_grid) if lam_grid is not None else [lam_rep]
-    
+
     # Global distance threshold
     tau_global = float(np.quantile(dZ, np.clip(dist_quantile, 0.0, 1.0))) if use_global_quantile else np.nan
 
-    out: Dict[str, float] = {}
-    rep_best = {'EJS': np.nan, 'num_jumps': 0, 'theta': np.nan, 'tau': np.nan}
+    out: dict[str, float] = {}
+    rep_best = {"EJS": np.nan, "num_jumps": 0, "theta": np.nan, "tau": np.nan}
     rep_idx = int(np.argmin(np.abs(np.asarray(lam_list, float) - float(lam_rep))))
 
     # Compute EJS for each lambda value
     for k, lam in enumerate(lam_list):
         # theta = lambda * sigma_hat (same for both modes)
         theta = float(lam * sigma_hat)
-        
-        jump_mask = (dE > theta)
+
+        jump_mask = dE > theta
         num_jumps = int(jump_mask.sum())
 
         if num_jumps == 0:
@@ -483,10 +520,10 @@ def energy_jump_sensitivity_auto(
 
         # Store representative lambda values
         if k == rep_idx:
-            rep_best['EJS'] = ejs_val
-            rep_best['num_jumps'] = float(num_jumps)
-            rep_best['theta'] = theta
-            rep_best['tau'] = float(tau) if np.isfinite(tau) else np.nan
+            rep_best["EJS"] = ejs_val
+            rep_best["num_jumps"] = float(num_jumps)
+            rep_best["theta"] = theta
+            rep_best["tau"] = float(tau) if np.isfinite(tau) else np.nan
 
     # Backward-compatible single-value keys
     out.update(rep_best)
@@ -507,16 +544,17 @@ def _sigma_halfnormal(dE: np.ndarray, robust: bool = False) -> float:
     else:
         return float(np.sqrt(np.nanmean(dE**2) + 1e-12))
 
+
 def ejs_auc_halfnormal(
     Delta_cond: np.ndarray,
     E: np.ndarray,
-    p_jump: float = 0.95,          # Optional half-normal quantile threshold
-    lam: Optional[float] = None,   # If provided, use theta = lam * sigma_d (overrides p_jump)
-    robust_sigma: bool = False,    # Whether to use a robust estimator for sigma_d
+    p_jump: float = 0.95,  # Optional half-normal quantile threshold
+    lam: Optional[float] = None,  # If provided, use theta = lam * sigma_d (overrides p_jump)
+    robust_sigma: bool = False,  # Whether to use a robust estimator for sigma_d
     max_pairs: Optional[int] = None,
     random_state: int = 0,
-    return_pr_auc: bool = True
-) -> Dict[str, float]:
+    return_pr_auc: bool = True,
+) -> dict[str, float]:
     """Half-normal threshold + ROC-AUC check for distance separation of energy jumps.
 
     Parameters
@@ -536,7 +574,7 @@ def ejs_auc_halfnormal(
     return_pr_auc: bool
         Also compute PR-AUC (average precision) if True.
     """
-    from sklearn.metrics import roc_auc_score, average_precision_score
+    from sklearn.metrics import average_precision_score, roc_auc_score
 
     Delta_cond = np.asarray(Delta_cond, float).ravel()
     m = Delta_cond.size
@@ -551,14 +589,21 @@ def ejs_auc_halfnormal(
     dE = dE[mask]
     dZ = Delta_cond[mask]
     if dE.size < 10:
-        return {"ROC_AUC": np.nan, "PR_AUC": np.nan, "pos_rate": np.nan,
-                "theta": np.nan, "sigma_hat": np.nan, "num_pairs": int(dE.size)}
+        return {
+            "ROC_AUC": np.nan,
+            "PR_AUC": np.nan,
+            "pos_rate": np.nan,
+            "theta": np.nan,
+            "sigma_hat": np.nan,
+            "num_pairs": int(dE.size),
+        }
 
     # Optional subsampling of pairs
     if (max_pairs is not None) and (dE.size > max_pairs):
         rng = np.random.default_rng(random_state)
         idx = rng.integers(0, dE.size, size=max_pairs)
-        dE = dE[idx]; dZ = dZ[idx]
+        dE = dE[idx]
+        dZ = dZ[idx]
 
     # Estimate sigma_d and the threshold theta
     sigma_hat = _sigma_halfnormal(dE, robust=robust_sigma)
@@ -566,19 +611,26 @@ def ejs_auc_halfnormal(
         theta = float(lam * sigma_hat)
         pj = np.nan
     else:
-        p = float(np.clip(p_jump, 1e-9, 1-1e-9))
+        p = float(np.clip(p_jump, 1e-9, 1 - 1e-9))
         theta = float(sigma_hat * np.sqrt(2.0) * erfinv(p))
         pj = p
 
-    y = (dE > theta).astype(int)   # Positive class: energy jump pair
-    s = dZ                         # Score: embedding distance (larger means more separated)
+    y = (dE > theta).astype(int)  # Positive class: energy jump pair
+    s = dZ  # Score: embedding distance (larger means more separated)
 
     # Handle degenerate cases
     n_pos = int(y.sum())
     n_all = int(y.size)
     if n_pos == 0 or n_pos == n_all:
-        return {"ROC_AUC": np.nan, "PR_AUC": np.nan, "pos_rate": n_pos / max(n_all,1),
-                "theta": theta, "sigma_hat": sigma_hat, "p_jump": pj, "num_pairs": n_all}
+        return {
+            "ROC_AUC": np.nan,
+            "PR_AUC": np.nan,
+            "pos_rate": n_pos / max(n_all, 1),
+            "theta": theta,
+            "sigma_hat": sigma_hat,
+            "p_jump": pj,
+            "num_pairs": n_all,
+        }
 
     # Compute ROC/PR AUC via sklearn
     try:
@@ -586,7 +638,8 @@ def ejs_auc_halfnormal(
     except Exception:
         # Fallback: Mann-Whitney U rank statistic approximation
         order = np.argsort(s)
-        ranks = np.empty_like(order); ranks[order] = np.arange(order.size)
+        ranks = np.empty_like(order)
+        ranks[order] = np.arange(order.size)
         U = ranks[y == 1].sum() - n_pos * (n_pos - 1) / 2.0
         auc = float(U / (n_pos * (n_all - n_pos) + 1e-12))
 
@@ -604,10 +657,11 @@ def ejs_auc_halfnormal(
         "theta": theta,
         "sigma_hat": sigma_hat,
         "p_jump": pj,
-        "num_pairs": n_all
+        "num_pairs": n_all,
     }
 
-def _condensed_fetch_pairs(Delta_cond: ArrayLike, pairs: Tuple[np.ndarray, np.ndarray]) -> np.ndarray:
+
+def _condensed_fetch_pairs(Delta_cond: ArrayLike, pairs: tuple[np.ndarray, np.ndarray]) -> np.ndarray:
     Delta_cond = np.asarray(Delta_cond, float)
     n = n_from_condensed_len(Delta_cond.shape[0])
     ii, jj = pairs
@@ -616,22 +670,21 @@ def _condensed_fetch_pairs(Delta_cond: ArrayLike, pairs: Tuple[np.ndarray, np.nd
         if i == j:
             vals[k] = 0.0
         else:
-            if i > j: i, j = j, i
+            if i > j:
+                i, j = j, i
             idx = condensed_index(i, j, n)
             vals[k] = Delta_cond[idx]
     return vals
 
+
 def energy_embedding_smoothness(
-    E: np.ndarray,
-    Delta_cond: ArrayLike,
-    order: Optional[np.ndarray] = None,
-    eps_energy: float = 1e-8
-) -> Dict[str, float]:
+    E: np.ndarray, Delta_cond: ArrayLike, order: Optional[np.ndarray] = None, eps_energy: float = 1e-8
+) -> dict[str, float]:
     E = np.asarray(E, float).reshape(-1)
     Delta_cond = np.asarray(Delta_cond, float)
     n = n_from_condensed_len(Delta_cond.shape[0])
     if E.size != n or n < 2:
-        return {'Smoothness': np.nan, 'segments': 0}
+        return {"Smoothness": np.nan, "segments": 0}
 
     if order is None:
         order = np.arange(n, dtype=int)
@@ -647,15 +700,18 @@ def energy_embedding_smoothness(
 
     m = np.isfinite(dE) & np.isfinite(dZ)
     if m.sum() == 0:
-        return {'Smoothness': np.nan, 'segments': 0}
-    seg_vals = np.exp(- dZ[m] / (dE[m] + eps_energy))
-    return {'Smoothness': float(np.mean(seg_vals)), 'segments': int(m.sum())}
+        return {"Smoothness": np.nan, "segments": 0}
+    seg_vals = np.exp(-dZ[m] / (dE[m] + eps_energy))
+    return {"Smoothness": float(np.mean(seg_vals)), "segments": int(m.sum())}
+
 
 def _q90_condensed(Delta_cond: np.ndarray, eps: float = 1e-12) -> float:
     v = np.asarray(Delta_cond, float)
     v = v[np.isfinite(v)]
-    if v.size == 0: return 1.0
+    if v.size == 0:
+        return 1.0
     return float(np.quantile(v, 0.90) + eps)
+
 
 def _q90_absdiff_energy(E: np.ndarray, max_pairs: int = 200_000, eps: float = 1e-12) -> float:
     E = np.asarray(E, float).reshape(-1)
@@ -663,35 +719,38 @@ def _q90_absdiff_energy(E: np.ndarray, max_pairs: int = 200_000, eps: float = 1e
     if n < 2:
         return 1.0
     rng = np.random.default_rng(0)
-    total = n*(n-1)//2
+    total = n * (n - 1) // 2
     m = min(max_pairs, total)
-    ii = rng.integers(0, n-1, size=m)
-    jj = rng.integers(1, n,   size=m)
+    ii = rng.integers(0, n - 1, size=m)
+    jj = rng.integers(1, n, size=m)
     mask = ii < jj
     di = np.abs(E[ii[mask]] - E[jj[mask]])
-    if di.size == 0: return 1.0
+    if di.size == 0:
+        return 1.0
     return float(np.quantile(di, 0.90) + eps)
+
 
 def _resolve_energy_threshold(
     E: np.ndarray,
     theta_abs: Optional[float] = None,
     gamma_rel: Optional[float] = None,
-    qE90_cache: Optional[float] = None
-) -> Tuple[float, float, str]:
+    qE90_cache: Optional[float] = None,
+) -> tuple[float, float, str]:
     if theta_abs is not None:
-        return float(theta_abs), (qE90_cache if qE90_cache is not None else _q90_absdiff_energy(E)), 'abs'
+        return float(theta_abs), (qE90_cache if qE90_cache is not None else _q90_absdiff_energy(E)), "abs"
     if gamma_rel is None:
         gamma_rel = 0.20
     q = qE90_cache if qE90_cache is not None else _q90_absdiff_energy(E)
-    return float(gamma_rel * q), q, 'rel'
+    return float(gamma_rel * q), q, "rel"
+
 
 def thresholded_smoothness(
     Delta_cond: np.ndarray,
     E: np.ndarray,
     theta_abs: Optional[float] = None,
     gamma_rel: Optional[float] = 0.20,
-    eps: float = 1e-12
-) -> Dict[str, float]:
+    eps: float = 1e-12,
+) -> dict[str, float]:
     Delta_cond = np.asarray(Delta_cond, float)
     E = np.asarray(E, float).reshape(-1)
     n = n_from_condensed_len(Delta_cond.size)
@@ -701,7 +760,8 @@ def thresholded_smoothness(
     qZ = _q90_condensed(Delta_cond, eps=eps)
     qE = _q90_absdiff_energy(E, eps=eps)
     ii, jj = _pair_indices_from_n(n)
-    dE = np.abs(E[ii] - E[jj]); dZ = _condensed_fetch_pairs(Delta_cond, (ii, jj))
+    dE = np.abs(E[ii] - E[jj])
+    dZ = _condensed_fetch_pairs(Delta_cond, (ii, jj))
 
     TE, qE90, mode = _resolve_energy_threshold(E, theta_abs, gamma_rel, qE90_cache=qE)
     m = np.isfinite(dE) & np.isfinite(dZ) & (dE >= TE)
@@ -710,15 +770,14 @@ def thresholded_smoothness(
 
     num = dZ[m] / qZ
     den = dE[m] / qE + eps
-    val = np.exp( - num / den )
+    val = np.exp(-num / den)
     return {"TS": float(np.mean(val)), "used": int(m.sum()), "T_E": TE, "qE90": qE90, "qZ90": qZ}
+
 
 # ---- KS/W1: two-sample comparison against |delta E| ----
 def ks_wasserstein_against_energy_diff(
-    Delta_cond: np.ndarray,
-    E: np.ndarray,
-    q_grid: Iterable[float] = tuple(np.linspace(0.0, 1.0, 1001)[1:-1])
-) -> Dict[str, float]:
+    Delta_cond: np.ndarray, E: np.ndarray, q_grid: Iterable[float] = tuple(np.linspace(0.0, 1.0, 1001)[1:-1])
+) -> dict[str, float]:
     """Compare delta distances and |delta E| via KS and Wasserstein-1 statistics.
 
     Returns the Kolmogorov-Smirnov statistic, the Wasserstein-1 distance, and
@@ -738,6 +797,7 @@ def ks_wasserstein_against_energy_diff(
 
     try:
         from scipy.stats import ks_2samp, wasserstein_distance
+
         KS = float(ks_2samp(x, y, alternative="two-sided", mode="auto").statistic)
         W1 = float(wasserstein_distance(x, y))
     except Exception:
@@ -751,6 +811,7 @@ def ks_wasserstein_against_energy_diff(
 
     return {"KS": KS, "W1": W1, "sigma_hat": sigma_hat}
 
+
 def compute_energy_metrics_from_condensed(
     Delta_cond: ArrayLike,
     E: np.ndarray,
@@ -761,7 +822,7 @@ def compute_energy_metrics_from_condensed(
     cka_in_mem_threshold: int = 8000,
     # Optional EJS-AUC computation
     compute_ejs_auc: bool = True,
-) -> Dict[str, float]:
+) -> dict[str, float]:
     """Compute energy-aligned metrics from a condensed distance vector.
 
     Returns rank/statistics metrics (Spearman, Kendall, isotonic R2, dCor,
@@ -777,11 +838,11 @@ def compute_energy_metrics_from_condensed(
 
     Dref_cond = vector_to_absdiff_condensed(E, dtype=np.float32)
 
-    out: Dict[str, float] = {}
+    out: dict[str, float] = {}
     # Correlation metrics
     out["spearman"] = spearman_from_condensed(Dref_cond, Delta_cond)
-    out["kendall"]  = kendall_from_condensed(Dref_cond, Delta_cond)
-    out["iso_R2"]   = isotonic_r2_from_condensed(Dref_cond, Delta_cond)
+    out["kendall"] = kendall_from_condensed(Dref_cond, Delta_cond)
+    out["iso_R2"] = isotonic_r2_from_condensed(Dref_cond, Delta_cond)
     # Distance correlation
     try:
         out["dCor"] = distance_correlation_from_condensed(Dref_cond, Delta_cond)
@@ -790,17 +851,19 @@ def compute_energy_metrics_from_condensed(
     # CKA (RBF)
     try:
         out["cka_rbf"] = cka_rbf_from_condensed(
-            Dref_cond, Delta_cond,
+            Dref_cond,
+            Delta_cond,
             expand_memmap1=cka_memmap_ref,
             expand_memmap2=cka_memmap_emb,
-            in_mem_threshold=cka_in_mem_threshold
+            in_mem_threshold=cka_in_mem_threshold,
         )
     except Exception:
         out["cka_rbf"] = np.nan
 
     # EJS with multiple lambda values
     ejs_dict = energy_jump_sensitivity_auto(
-        E, Delta_cond,
+        E,
+        Delta_cond,
         lam_grid=(0.1, 0.5, 1.0, 2.0, 3.0),  # Compute for all lambda values
         lam_rep=2.0,
         robust_sigma=True,
@@ -820,14 +883,15 @@ def compute_energy_metrics_from_condensed(
     if compute_ejs_auc:
         try:
             auc_res = ejs_auc_halfnormal(
-                Delta_cond, E,   # Ensure delta precedes E
-                lam=2.0,         # theta = 2 * sigma_d (tune if needed)
+                Delta_cond,
+                E,  # Ensure delta precedes E
+                lam=2.0,  # theta = 2 * sigma_d (tune if needed)
             )
             out["ROC_AUC"] = float(auc_res.get("ROC_AUC", np.nan))
-            out["PR_AUC"]  = float(auc_res.get("PR_AUC",  np.nan))
+            out["PR_AUC"] = float(auc_res.get("PR_AUC", np.nan))
         except Exception:
             out["ROC_AUC"] = np.nan
-            out["PR_AUC"]  = np.nan
+            out["PR_AUC"] = np.nan
 
     # Smoothness summary
     sm = energy_embedding_smoothness(E, Delta_cond, order=order)
@@ -836,13 +900,15 @@ def compute_energy_metrics_from_condensed(
 
     return out
 
+
 # ============================================================
 # ============ 6. Sampling, evaluation, and aggregation =======
 # ============================================================
 
+
 @dataclass
 class Config:
-    mol_types: List[str] = None
+    mol_types: list[str] = None
     root_dir: str = str(GLOBAL_DATA_ROOT / "traj" / "results")
     energy_dir: str = str(GLOBAL_DATA_ROOT / "traj" / "npz_data")
     # Sampling configuration
@@ -861,13 +927,22 @@ class Config:
     details_csv: str = "details_long.csv"
     save_intermediate: bool = True
 
+
 DEFAULT_MOL_TYPES = [
-    "rmd17_aspirin", "rmd17_azobenzene", "rmd17_benzene", "rmd17_ethanol",
-    "rmd17_malonaldehyde", "rmd17_toluene", "rmd17_naphthalene",
-    "rmd17_paracetamol", "rmd17_salicylic", "rmd17_uracil"
+    "rmd17_aspirin",
+    "rmd17_azobenzene",
+    "rmd17_benzene",
+    "rmd17_ethanol",
+    "rmd17_malonaldehyde",
+    "rmd17_toluene",
+    "rmd17_naphthalene",
+    "rmd17_paracetamol",
+    "rmd17_salicylic",
+    "rmd17_uracil",
 ]
 
-def mean_ci(values: List[float], alpha: float = 0.05) -> Tuple[float, float]:
+
+def mean_ci(values: list[float], alpha: float = 0.05) -> tuple[float, float]:
     arr = np.asarray(values, float)
     arr = arr[np.isfinite(arr)]
     if arr.size < 2:
@@ -877,7 +952,8 @@ def mean_ci(values: List[float], alpha: float = 0.05) -> Tuple[float, float]:
     half = 1.96 * s / math.sqrt(arr.size)
     return m, half
 
-def _one_sample_worker(args: Dict[str, Any]) -> Dict[str, Any]:
+
+def _one_sample_worker(args: dict[str, Any]) -> dict[str, Any]:
     mol_type: str = args["mol_type"]
     idx_start: int = args["idx_start"]
     window: int = args["window"]
@@ -895,36 +971,43 @@ def _one_sample_worker(args: Dict[str, Any]) -> Dict[str, Any]:
         with open(os.path.join(cfg.root_dir, "e3fp", mol_type + ".pkl"), "rb") as f:
             fps_all = pickle.load(f)
         fps_sub = fps_all[idx_start:idx_end]
-        D_tani = pairwise_tanimoto_fps_large(
-            fps_sub, block_size=cfg.block_size, out_mode="condensed", progress=False
-        )
+        D_tani = pairwise_tanimoto_fps_large(fps_sub, block_size=cfg.block_size, out_mode="condensed", progress=False)
         m1 = compute_energy_metrics_from_condensed(D_tani, energy)
         m2 = thresholded_smoothness(D_tani, energy, eps=1e-12)
         m3 = ks_wasserstein_against_energy_diff(D_tani, energy)
         metrics_e3fp = {**m1, **m2, **m3}
         for k, v in metrics_e3fp.items():
-            results_rows.append({
+            results_rows.append(
+                {
+                    "mol_type": mol_type,
+                    "sample_start": idx_start,
+                    "sample_end": idx_end,
+                    "model": "E3FP",
+                    "metric": k,
+                    "value": float(v) if np.isscalar(v) else np.nan,
+                }
+            )
+    except Exception as e:
+        results_rows.append(
+            {
                 "mol_type": mol_type,
                 "sample_start": idx_start,
                 "sample_end": idx_end,
                 "model": "E3FP",
-                "metric": k,
-                "value": float(v) if np.isscalar(v) else np.nan
-            })
-    except Exception as e:
-        results_rows.append({
-            "mol_type": mol_type, "sample_start": idx_start, "sample_end": idx_end,
-            "model": "E3FP", "metric": "ERROR", "value": np.nan, "error": str(e)
-        })
+                "metric": "ERROR",
+                "value": np.nan,
+                "error": str(e),
+            }
+        )
 
     # ========== Continuous embedding models ==========
     embed_specs = [
-        ("UniMol",    "unimol",   "arr_0"),
-        ("MolSpectra","molspec",  "arr_0"),
-        ("GemNet",    "gemnet",   "gemnet"),
-        ("MolAE",     "molae",    "arr_0"),
-        ("MACE",      "mace",     "arr_0"),
-        ("FMG",       "FMG",      "embeddings"),  # FMG uses 'embeddings' key
+        ("UniMol", "unimol", "arr_0"),
+        ("MolSpectra", "molspec", "arr_0"),
+        ("GemNet", "gemnet", "gemnet"),
+        ("MolAE", "molae", "arr_0"),
+        ("MACE", "mace", "arr_0"),
+        ("FMG", "FMG", "embeddings"),  # FMG uses 'embeddings' key
     ]
     for model_name, subdir, key in embed_specs:
         try:
@@ -932,29 +1015,38 @@ def _one_sample_worker(args: Dict[str, Any]) -> Dict[str, Any]:
             arr = np.load(path, mmap_mode="r")[key]
             Z = arr[idx_start:idx_end]
             D = pairwise_distances_from_embeddings_large(
-                Z, metric=cfg.metric_embed, block_size=cfg.block_size,
-                out_mode="condensed", progress=False
+                Z, metric=cfg.metric_embed, block_size=cfg.block_size, out_mode="condensed", progress=False
             )
             m1 = compute_energy_metrics_from_condensed(D, energy)
             m2 = thresholded_smoothness(D, energy, eps=1e-12)
             m3 = ks_wasserstein_against_energy_diff(D, energy)
             metrics = {**m1, **m2, **m3}
             for k, v in metrics.items():
-                results_rows.append({
+                results_rows.append(
+                    {
+                        "mol_type": mol_type,
+                        "sample_start": idx_start,
+                        "sample_end": idx_end,
+                        "model": model_name,
+                        "metric": k,
+                        "value": float(v) if np.isscalar(v) else np.nan,
+                    }
+                )
+        except Exception as e:
+            results_rows.append(
+                {
                     "mol_type": mol_type,
                     "sample_start": idx_start,
                     "sample_end": idx_end,
                     "model": model_name,
-                    "metric": k,
-                    "value": float(v) if np.isscalar(v) else np.nan
-                })
-        except Exception as e:
-            results_rows.append({
-                "mol_type": mol_type, "sample_start": idx_start, "sample_end": idx_end,
-                "model": model_name, "metric": "ERROR", "value": np.nan, "error": str(e)
-            })
+                    "metric": "ERROR",
+                    "value": np.nan,
+                    "error": str(e),
+                }
+            )
 
     return {"rows": results_rows}
+
 
 def run_once_for_molecule(cfg: Config, mol_type: str) -> pd.DataFrame:
     rng = np.random.default_rng(cfg.random_seed)
@@ -963,12 +1055,7 @@ def run_once_for_molecule(cfg: Config, mol_type: str) -> pd.DataFrame:
         raise ValueError("traj_len must be greater than window to draw samples.")
     starts = rng.integers(0, max_start, size=cfg.n_samples, endpoint=False)
 
-    tasks = [{
-        "mol_type": mol_type,
-        "idx_start": int(s),
-        "window": cfg.window,
-        "cfg": cfg
-    } for s in starts]
+    tasks = [{"mol_type": mol_type, "idx_start": int(s), "window": cfg.window, "cfg": cfg} for s in starts]
 
     print(f"[{mol_type}] Sampling {cfg.n_samples} windows of size {cfg.window}...")
 
@@ -991,6 +1078,7 @@ def run_once_for_molecule(cfg: Config, mol_type: str) -> pd.DataFrame:
 
     return df
 
+
 def aggregate_overall(details_df: pd.DataFrame) -> pd.DataFrame:
     df = details_df[details_df["metric"] != "ERROR"].copy()
     grouped = df.groupby(["model", "metric"])["value"].apply(list).reset_index()
@@ -1001,17 +1089,11 @@ def aggregate_overall(details_df: pd.DataFrame) -> pd.DataFrame:
         metric = row["metric"]
         vals = [float(v) for v in row["value"] if np.isfinite(v)]
         m, ci = mean_ci(vals, alpha=0.05)
-        summary_rows.append({
-            "model": model,
-            "metric": metric,
-            "mean": m,
-            "ci95": ci,
-            "n": len(vals)
-        })
+        summary_rows.append({"model": model, "metric": metric, "mean": m, "ci95": ci, "n": len(vals)})
     summary = pd.DataFrame(summary_rows)
 
     mean_table = summary.pivot(index="model", columns="metric", values="mean")
-    ci_table   = summary.pivot(index="model", columns="metric", values="ci95")
+    ci_table = summary.pivot(index="model", columns="metric", values="ci95")
 
     cols = []
     data = []
@@ -1028,6 +1110,7 @@ def aggregate_overall(details_df: pd.DataFrame) -> pd.DataFrame:
     summary_wide = pd.DataFrame(data, index=mean_table.index, columns=cols)
     summary_wide = summary_wide.sort_index()
     return summary_wide
+
 
 def run_trajectory_benchmark(cfg: Optional[Config] = None) -> None:
     """Run the trajectory benchmark with an optional :class:`Config` override."""
@@ -1053,6 +1136,7 @@ def run_trajectory_benchmark(cfg: Optional[Config] = None) -> None:
 
 def main():
     run_trajectory_benchmark()
+
 
 if __name__ == "__main__":
     main()

@@ -7,8 +7,8 @@ a development environment and submit changes.
 
 ```bash
 # Clone the repository
-git clone https://github.com/EscheWang/3DBench.git
-cd 3DBench
+git clone https://github.com/ComDec/3DCS.git
+cd 3DCS
 
 # Create a virtual environment
 python -m venv .venv
@@ -75,7 +75,7 @@ Key style rules:
 
 ## Reporting Issues
 
-Use the [GitHub issue tracker](https://github.com/EscheWang/3DBench/issues) to report
+Use the [GitHub issue tracker](https://github.com/ComDec/3DCS/issues) to report
 bugs or request features. Please include:
 - Python version and OS
 - Steps to reproduce the issue

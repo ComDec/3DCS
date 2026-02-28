@@ -1,6 +1,7 @@
 # 3DCS
 
-[![CI](https://github.com/EscheWang/3DBench/actions/workflows/ci.yml/badge.svg)](https://github.com/EscheWang/3DBench/actions/workflows/ci.yml)
+[![CI](https://github.com/ComDec/3DCS/actions/workflows/ci.yml/badge.svg)](https://github.com/ComDec/3DCS/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/ComDec/3DCS/graph/badge.svg)](https://codecov.io/gh/ComDec/3DCS)
 [![Python 3.9+](https://img.shields.io/badge/python-3.9%2B-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 

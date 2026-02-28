@@ -49,9 +49,9 @@ dev = [
 three-dbench = "three_dbench.__main__:main"
 
 [project.urls]
-Homepage = "https://github.com/EscheWang/3DBench"
-Documentation = "https://github.com/EscheWang/3DBench/tree/main/docs"
-Issues = "https://github.com/EscheWang/3DBench/issues"
+Homepage = "https://github.com/ComDec/3DCS"
+Documentation = "https://github.com/ComDec/3DCS/tree/main/docs"
+Issues = "https://github.com/ComDec/3DCS/issues"
 
 [tool.setuptools]
 package-dir = {"" = "src"}

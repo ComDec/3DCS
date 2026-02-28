@@ -1,13 +1,14 @@
 """Hugging Face dataset conversion for the chirality benchmark."""
+
 from __future__ import annotations
 
 import pickle
 from pathlib import Path
-from typing import Dict, Iterable, Optional
 
 import datasets
 
 from three_dbench.chirality.evaluation import parse_key_en
+
 from .serialization import mols_to_blocks
 
 
@@ -23,7 +24,7 @@ def convert_chirality_pkl_to_hf(
     the conformer MolBlocks plus the flattened offset for embedding alignment.
     """
     with input_pkl.open("rb") as f:
-        key_to_mols: Dict[str, list] = pickle.load(f)
+        key_to_mols: dict[str, list] = pickle.load(f)
 
     rows = []
     offset = 0

@@ -1,14 +1,14 @@
 """Shared metric utilities for 3DBench evaluations."""
+
 from __future__ import annotations
 
 import math
-from typing import Dict, Iterable, Optional, Sequence, Tuple, Union
+from typing import Optional, Union
 
 import numpy as np
 from numpy.typing import ArrayLike
 from scipy.stats import kendalltau, spearmanr
 from sklearn.isotonic import IsotonicRegression
-
 
 Number = Union[int, float]
 RandomState = Optional[Union[int, np.random.Generator]]
@@ -35,7 +35,7 @@ def n_from_condensed_length(m: int) -> int:
     return n
 
 
-def to_square(distance: ArrayLike, *, dtype: Optional[np.dtype] = np.float64) -> np.ndarray:
+def to_square(distance: ArrayLike, *, dtype: np.dtype | None = np.float64) -> np.ndarray:
     """Convert a distance representation to a full square matrix.
 
     Accepts either a square matrix or a condensed upper-triangular vector.
@@ -76,7 +76,7 @@ def _rng(random_state: RandomState) -> np.random.Generator:
     return np.random.default_rng(random_state)
 
 
-def _filter_finite(v1: np.ndarray, v2: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+def _filter_finite(v1: np.ndarray, v2: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
     mask = np.isfinite(v1) & np.isfinite(v2)
     return v1[mask], v2[mask]
 
@@ -85,7 +85,7 @@ def spearman_correlation(
     distance_a: ArrayLike,
     distance_b: ArrayLike,
     *,
-    max_pairs: Optional[int] = None,
+    max_pairs: int | None = None,
     random_state: RandomState = None,
 ) -> float:
     """Spearman correlation between two distance representations."""
@@ -107,7 +107,7 @@ def kendall_correlation(
     distance_a: ArrayLike,
     distance_b: ArrayLike,
     *,
-    max_pairs: Optional[int] = None,
+    max_pairs: int | None = None,
     random_state: RandomState = None,
 ) -> float:
     """Kendall correlation between two distance representations."""
@@ -174,7 +174,7 @@ def mantel_test(
     n_permutations: int = 999,
     method: str = "spearman",
     random_state: RandomState = None,
-) -> Tuple[float, float]:
+) -> tuple[float, float]:
     """Perform a Mantel test between two distance matrices."""
     D = to_square(distance_a, dtype=np.float64)
     Delta = to_square(distance_b, dtype=np.float64)
@@ -185,9 +185,14 @@ def mantel_test(
     d = D[iu]
     x = Delta[iu]
     if method == "pearson":
-        stat = lambda a, b: np.corrcoef(a, b)[0, 1]
+
+        def stat(a, b):
+            return np.corrcoef(a, b)[0, 1]
     else:
-        stat = lambda a, b: spearmanr(a, b).correlation
+
+        def stat(a, b):
+            return spearmanr(a, b).correlation
+
     r0 = float(stat(d, x))
     rng = _rng(random_state)
     ge = 0
@@ -205,8 +210,8 @@ def kruskal_stress(
     distance_reference: ArrayLike,
     distance_model: ArrayLike,
     *,
-    weights: Optional[np.ndarray] = None,
-) -> Tuple[float, float, float]:
+    weights: np.ndarray | None = None,
+) -> tuple[float, float, float]:
     """Return Kruskal stress-1 along with optimal linear fit parameters."""
     D = to_square(distance_reference, dtype=np.float64)
     Delta = to_square(distance_model, dtype=np.float64)
@@ -279,11 +284,11 @@ def _median_bandwidth(distances: np.ndarray, eps: float = 1e-12) -> float:
     return float(math.sqrt(med_sq + eps))
 
 
-def _rbf_kernel(distance: np.ndarray, sigma: Optional[float]) -> np.ndarray:
+def _rbf_kernel(distance: np.ndarray, sigma: float | None) -> np.ndarray:
     if sigma is None:
         iu = np.triu_indices(distance.shape[0], 1)
         sigma = _median_bandwidth(distance[iu])
-    K = np.exp(-(distance ** 2) / (2.0 * sigma ** 2 + 1e-12))
+    K = np.exp(-(distance**2) / (2.0 * sigma**2 + 1e-12))
     np.fill_diagonal(K, 1.0)
     return K
 
@@ -298,8 +303,8 @@ def cka_rbf(
     distance_a: ArrayLike,
     distance_b: ArrayLike,
     *,
-    sigma_a: Optional[float] = None,
-    sigma_b: Optional[float] = None,
+    sigma_a: float | None = None,
+    sigma_b: float | None = None,
     share_sigma: bool = False,
 ) -> float:
     """CKA similarity using RBF kernels derived from distance matrices."""
@@ -355,7 +360,7 @@ def torsion_embedding_spearman(
     distance_model: ArrayLike,
     torsion_deg: ArrayLike,
     *,
-    max_pairs: Optional[int] = None,
+    max_pairs: int | None = None,
     random_state: RandomState = None,
 ) -> float:
     """Spearman correlation between embedding distances and torsion differences."""
@@ -396,7 +401,7 @@ def angular_smoothness(
     torsion_deg: ArrayLike,
     *,
     circular: bool = True,
-) -> Dict[str, float]:
+) -> dict[str, float]:
     """Assess angular smoothness along sorted torsion angles."""
     Delta = to_square(distance_model, dtype=np.float64)
     phi = np.deg2rad(np.asarray(torsion_deg, dtype=np.float64).reshape(-1))

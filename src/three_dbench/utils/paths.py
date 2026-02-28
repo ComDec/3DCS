@@ -1,8 +1,8 @@
 """Shared path helpers for locating data and result directories."""
+
 from __future__ import annotations
 
 from pathlib import Path
-
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 SRC_ROOT = PROJECT_ROOT / "src"

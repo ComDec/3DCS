@@ -1,10 +1,10 @@
 """Tests for the demo script using bundled fixtures."""
+
 from __future__ import annotations
 
 from pathlib import Path
 
 import pytest
-
 
 FIXTURES = Path(__file__).resolve().parent.parent / "examples" / "fixtures"
 

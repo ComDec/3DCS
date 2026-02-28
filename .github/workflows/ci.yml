@@ -33,4 +33,12 @@ jobs:
           pip install -e ".[dev]"
           pip install rdkit-pypi
       - name: Run tests
-        run: pytest -m "not slow" --tb=short -q
+        run: pytest -m "not slow" --tb=short -q --cov=three_dbench --cov-report=xml
+      - name: Upload coverage
+        if: matrix.python-version == '3.11'
+        uses: codecov/codecov-action@v4
+        with:
+          files: coverage.xml
+          fail_ci_if_not_required: false
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}

@@ -1,9 +1,10 @@
 """Hugging Face dataset conversion for the rotation benchmark."""
+
 from __future__ import annotations
 
 import pickle
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Iterable, Optional
 
 import datasets
 import lmdb
@@ -15,7 +16,7 @@ def convert_rotation_lmdb_to_hf(
     lmdb_root: Path,
     output_dir: Path,
     *,
-    shards: Optional[Iterable[int]] = None,
+    shards: Iterable[int] | None = None,
     include_mol_blocks: bool = True,
 ) -> datasets.Dataset:
     """Convert LMDB rotation sources into a Hugging Face dataset.

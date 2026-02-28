@@ -1,11 +1,11 @@
 """Chirality benchmark evaluation for user-provided embeddings."""
+
 from __future__ import annotations
 
+import json
 from collections import OrderedDict
 from pathlib import Path
-from typing import Dict, Optional, Tuple
 
-import json
 import pandas as pd
 
 from three_dbench.chirality.evaluation import evaluate_en_separation_from_counts
@@ -13,7 +13,7 @@ from three_dbench.datasets.chirality import load_chirality_dataset
 from three_dbench.embeddings import EmbeddingArray
 
 
-def _key_counts_from_dataset(dataset) -> Dict[str, int]:
+def _key_counts_from_dataset(dataset) -> dict[str, int]:
     counts = OrderedDict()
     for row in dataset:
         counts[row["key"]] = int(row["n_conformers"])
@@ -24,13 +24,13 @@ def evaluate_chirality_embeddings(
     *,
     dataset_dir: Path,
     embeddings: EmbeddingArray,
-    output_dir: Optional[Path] = None,
+    output_dir: Path | None = None,
     model_name: str = "custom",
     per_mol_min_n: int = 2,
     do_unsup_when_single_en: bool = False,
     unsup_kmax: int = 50,
-    max_molecules: Optional[int] = None,
-) -> Tuple[Dict, Dict]:
+    max_molecules: int | None = None,
+) -> tuple[dict, dict]:
     """Evaluate chirality embeddings against the HF dataset."""
     dataset = load_chirality_dataset(dataset_dir)
     key_to_counts = _key_counts_from_dataset(dataset)

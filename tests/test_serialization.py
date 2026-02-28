@@ -1,4 +1,5 @@
 """Tests for molecule serialization utilities."""
+
 from __future__ import annotations
 
 import pytest
@@ -6,7 +7,12 @@ import pytest
 rdkit = pytest.importorskip("rdkit")
 from rdkit import Chem  # noqa: E402
 
-from three_dbench.datasets.serialization import blocks_to_mols, mol_from_block, mol_to_block, mols_to_blocks  # noqa: E402
+from three_dbench.datasets.serialization import (  # noqa: E402
+    blocks_to_mols,
+    mol_from_block,
+    mol_to_block,
+    mols_to_blocks,
+)
 
 
 def test_molblock_roundtrip():

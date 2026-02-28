@@ -1,7 +1,8 @@
 """Serialization helpers for RDKit molecules."""
+
 from __future__ import annotations
 
-from typing import Iterable, List
+from collections.abc import Iterable
 
 from rdkit import Chem
 
@@ -19,11 +20,11 @@ def mol_from_block(block: str, *, sanitize: bool = False) -> Chem.Mol:
     return mol
 
 
-def mols_to_blocks(mols: Iterable[Chem.Mol]) -> List[str]:
+def mols_to_blocks(mols: Iterable[Chem.Mol]) -> list[str]:
     """Convert an iterable of molecules into MolBlock strings."""
     return [mol_to_block(m) for m in mols]
 
 
-def blocks_to_mols(blocks: Iterable[str], *, sanitize: bool = False) -> List[Chem.Mol]:
+def blocks_to_mols(blocks: Iterable[str], *, sanitize: bool = False) -> list[Chem.Mol]:
     """Convert MolBlock strings into RDKit molecules."""
     return [mol_from_block(b, sanitize=sanitize) for b in blocks]

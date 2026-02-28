@@ -1,9 +1,10 @@
 """Trajectory benchmark evaluation for user-provided embeddings."""
+
 from __future__ import annotations
 
 import json
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Dict, Iterable, Optional, Tuple
 
 import numpy as np
 import pandas as pd
@@ -17,7 +18,7 @@ from three_dbench.traj.evaluation import (
 )
 
 
-def _mean_ci(values: Iterable[float]) -> Tuple[float, float]:
+def _mean_ci(values: Iterable[float]) -> tuple[float, float]:
     arr = np.asarray([v for v in values if np.isfinite(v)], dtype=float)
     if arr.size < 2:
         return float("nan"), float("nan")
@@ -30,15 +31,15 @@ def _mean_ci(values: Iterable[float]) -> Tuple[float, float]:
 def evaluate_trajectory_embeddings(
     *,
     dataset_dir: Path,
-    embeddings_by_mol: Dict[str, np.ndarray],
-    output_dir: Optional[Path] = None,
+    embeddings_by_mol: dict[str, np.ndarray],
+    output_dir: Path | None = None,
     model_name: str = "custom",
     n_samples: int = 100,
     window: int = 2000,
     metric_embed: str = "cosine",
     block_size: int = 4096,
     random_seed: int = 2025,
-) -> Tuple[pd.DataFrame, pd.DataFrame]:
+) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Evaluate trajectory embeddings against the HF energy dataset."""
     dataset = load_traj_energy_dataset(dataset_dir)
     rng = np.random.default_rng(random_seed)

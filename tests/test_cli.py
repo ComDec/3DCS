@@ -1,4 +1,5 @@
 """Tests for CLI argument parsing and help output."""
+
 from __future__ import annotations
 
 import subprocess

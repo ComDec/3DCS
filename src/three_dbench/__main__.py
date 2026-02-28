@@ -1,9 +1,9 @@
 """Command-line interface for 3DBench."""
+
 from __future__ import annotations
 
 import argparse
 from pathlib import Path
-from typing import List, Optional
 
 from three_dbench.embeddings import load_embeddings, load_embeddings_dict, load_embeddings_dir
 from three_dbench.utils.paths import DATA_ROOT, RESULTS_ROOT
@@ -31,7 +31,9 @@ def _parse_args() -> argparse.Namespace:
     evaluate.add_argument("--model-name", type=str, default="custom", help="Model name for reports")
     evaluate.add_argument("--output-dir", type=Path, default=None, help="Output directory")
     evaluate.add_argument("--metrics", type=str, nargs="*", default=None, help="Rotation distance metrics")
-    evaluate.add_argument("--layout", type=str, choices=["flat", "by-key"], default="flat", help="Rotation embedding layout")
+    evaluate.add_argument(
+        "--layout", type=str, choices=["flat", "by-key"], default="flat", help="Rotation embedding layout"
+    )
     evaluate.add_argument("--n-samples", type=int, default=100, help="Trajectory samples per molecule")
     evaluate.add_argument("--window", type=int, default=2000, help="Trajectory window size")
     evaluate.add_argument("--metric-embed", type=str, default="cosine", help="Trajectory distance metric")
@@ -47,12 +49,14 @@ def _convert_dataset(args: argparse.Namespace) -> None:
     include_mols = not args.no_mol_blocks
     if args.task == "chirality":
         from three_dbench.datasets.chirality import convert_chirality_pkl_to_hf
+
         input_pkl = args.input_pkl or (DATA_ROOT / "chirality" / "chirality_bench_conformers_noised_only.pkl")
         output_dir = args.output_dir or (DATA_ROOT / "hf" / "chirality")
         convert_chirality_pkl_to_hf(input_pkl, output_dir, include_mol_blocks=include_mols)
         print(f"Saved chirality HF dataset to {output_dir}")
     elif args.task == "rotation":
         from three_dbench.datasets.rotation import convert_rotation_lmdb_to_hf
+
         lmdb_root = args.lmdb_root or (DATA_ROOT / "rotation" / "results")
         output_dir = args.output_dir or (DATA_ROOT / "hf" / "rotation")
         convert_rotation_lmdb_to_hf(
@@ -64,6 +68,7 @@ def _convert_dataset(args: argparse.Namespace) -> None:
         print(f"Saved rotation HF dataset to {output_dir}")
     elif args.task == "traj":
         from three_dbench.datasets.traj import convert_traj_energy_npz_to_hf, convert_traj_frames_pkl_to_hf
+
         mol_pkl_dir = args.mol_pkl_dir or (DATA_ROOT / "traj" / "mol_pkl")
         energy_dir = args.energy_dir or (DATA_ROOT / "traj" / "npz_data")
         output_dir = args.output_dir or (DATA_ROOT / "hf" / "traj")
@@ -81,6 +86,7 @@ def _evaluate_embeddings(args: argparse.Namespace) -> None:
 
     if args.task == "chirality":
         from three_dbench.benchmarks import evaluate_chirality_embeddings
+
         embeddings = load_embeddings(args.embeddings, key=args.embedding_key)
         evaluate_chirality_embeddings(
             dataset_dir=args.dataset_dir,
@@ -96,6 +102,7 @@ def _evaluate_embeddings(args: argparse.Namespace) -> None:
 
     if args.task == "rotation":
         from three_dbench.benchmarks import evaluate_rotation_embeddings
+
         metrics = args.metrics or ["cosine", "euclidean"]
         if args.layout == "by-key":
             emb_dict = load_embeddings_dict(args.embeddings, key=args.embedding_key)
@@ -120,6 +127,7 @@ def _evaluate_embeddings(args: argparse.Namespace) -> None:
 
     if args.task == "traj":
         from three_dbench.benchmarks import evaluate_trajectory_embeddings
+
         if args.embeddings.is_dir():
             emb_dict = load_embeddings_dir(args.embeddings, file_glob="rmd17_*.npz", key=args.embedding_key)
         else:

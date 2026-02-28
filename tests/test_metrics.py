@@ -1,4 +1,5 @@
 """Tests for the common metrics module."""
+
 from __future__ import annotations
 
 import numpy as np

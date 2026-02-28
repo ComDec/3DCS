@@ -1,9 +1,10 @@
 """Rotation benchmark evaluation for user-provided embeddings."""
+
 from __future__ import annotations
 
 import json
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Dict, Iterable, List, Optional, Tuple
 
 import numpy as np
 import pandas as pd
@@ -20,7 +21,7 @@ def _slice_flat_embeddings(embeddings: EmbeddingArray, offset: int, count: int):
     return embeddings.array[offset : offset + count]
 
 
-def _aggregate_metric(values: Iterable[Optional[float]]) -> Tuple[float, float]:
+def _aggregate_metric(values: Iterable[float | None]) -> tuple[float, float]:
     arr = np.asarray([v for v in values if v is not None and np.isfinite(v)], dtype=float)
     if arr.size == 0:
         return float("nan"), float("nan")
@@ -30,18 +31,18 @@ def _aggregate_metric(values: Iterable[Optional[float]]) -> Tuple[float, float]:
 def evaluate_rotation_embeddings(
     *,
     dataset_dir: Path,
-    embeddings: Optional[EmbeddingArray] = None,
-    embeddings_by_key: Optional[Dict[str, np.ndarray]] = None,
-    output_dir: Optional[Path] = None,
+    embeddings: EmbeddingArray | None = None,
+    embeddings_by_key: dict[str, np.ndarray] | None = None,
+    output_dir: Path | None = None,
     model_name: str = "custom",
     metrics: Iterable[str] = ("cosine", "euclidean"),
-) -> Dict[str, Dict[str, Dict[str, float]]]:
+) -> dict[str, dict[str, dict[str, float]]]:
     """Evaluate rotation embeddings using the HF dataset."""
     if embeddings is None and embeddings_by_key is None:
         raise ValueError("Provide either embeddings or embeddings_by_key.")
 
     dataset = load_rotation_dataset(dataset_dir)
-    results: Dict[str, Dict[str, Dict[str, float]]] = {}
+    results: dict[str, dict[str, dict[str, float]]] = {}
     metrics = list(metrics)
 
     for row in dataset:

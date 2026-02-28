@@ -1,10 +1,10 @@
 """Embedding loading utilities."""
+
 from __future__ import annotations
 
 import pickle
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, Iterable, Optional, Tuple, Union
 
 import numpy as np
 
@@ -13,11 +13,11 @@ import numpy as np
 class EmbeddingArray:
     """Container for a single embedding array."""
 
-    array: Union[np.ndarray, list]
+    array: np.ndarray | list
     kind: str  # "vector" or "fingerprint"
 
 
-def _select_npz_key(data: np.lib.npyio.NpzFile, key: Optional[str]) -> np.ndarray:
+def _select_npz_key(data: np.lib.npyio.NpzFile, key: str | None) -> np.ndarray:
     if key is not None:
         return data[key]
     if "arr_0" in data.files:
@@ -25,7 +25,7 @@ def _select_npz_key(data: np.lib.npyio.NpzFile, key: Optional[str]) -> np.ndarra
     return data[data.files[0]]
 
 
-def load_embeddings(path: Path, *, key: Optional[str] = None) -> EmbeddingArray:
+def load_embeddings(path: Path, *, key: str | None = None) -> EmbeddingArray:
     """Load embeddings from NPZ/NPY/PKL containers.
 
     Returns an EmbeddingArray with kind inferred from the object type.
@@ -55,7 +55,7 @@ def load_embeddings(path: Path, *, key: Optional[str] = None) -> EmbeddingArray:
     return EmbeddingArray(array=arr, kind=kind)
 
 
-def load_embeddings_dict(path: Path, *, key: Optional[str] = None) -> Dict[str, np.ndarray]:
+def load_embeddings_dict(path: Path, *, key: str | None = None) -> dict[str, np.ndarray]:
     """Load a dict of embeddings keyed by molecule or shard IDs."""
     suffix = path.suffix.lower()
     if suffix == ".npz":
@@ -78,8 +78,8 @@ def load_embeddings_dir(
     embeddings_dir: Path,
     *,
     file_glob: str,
-    key: Optional[str] = None,
-) -> Dict[str, np.ndarray]:
+    key: str | None = None,
+) -> dict[str, np.ndarray]:
     """Load embeddings from a directory of NPZ files.
 
     The returned dict keys are derived from the file stem.

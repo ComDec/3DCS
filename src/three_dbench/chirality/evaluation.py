@@ -1,24 +1,37 @@
-import re
 import itertools
+import json
+import os
+import pickle
+import re
+from collections.abc import Sequence
+from concurrent.futures import ProcessPoolExecutor, as_completed
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Tuple, Optional, Any, Sequence, Union
+from typing import Any, Optional, Union
 
 import numpy as np
+import pandas as pd
+from tqdm import tqdm
+
+from three_dbench.utils.paths import DATA_ROOT as GLOBAL_DATA_ROOT
+from three_dbench.utils.paths import RESULTS_ROOT as GLOBAL_RESULTS_ROOT
 
 # ===== RDKit fingerprint support =====
 try:
     from rdkit import DataStructs as DS
+    from rdkit import rdBase
+
     _HAS_RDKIT = True
 except Exception:
     DS = None
+    rdBase = None
     _HAS_RDKIT = False
 
 # ===== Optional sklearn support (preferred when available) =====
 try:
-    from sklearn.metrics import roc_auc_score, silhouette_score, pairwise_distances
     from sklearn.cluster import KMeans
-    from sklearn.metrics import davies_bouldin_score
+    from sklearn.metrics import davies_bouldin_score, pairwise_distances, roc_auc_score, silhouette_score
+
     _HAS_SK = True
 except Exception:
     roc_auc_score = None
@@ -32,7 +45,8 @@ except Exception:
 # ===================== 1) Parse key: mol_id + en_id =====================
 _KEY_RE = re.compile(r"^(?P<mol>[^:]+)::en(?P<en>\d+)(?:_.*)?$")
 
-def parse_key_en(key: str) -> Tuple[str, str]:
+
+def parse_key_en(key: str) -> tuple[str, str]:
     """Split a composite key into ``(mol_id, en_id)``.
 
     Example: ``'CHEMBL100259::en3_A5:S;A7:S;A10:R;A12:S'`` -> ``('CHEMBL100259', '3')``.
@@ -46,16 +60,17 @@ def parse_key_en(key: str) -> Tuple[str, str]:
 # ================== 2) Flatten indices (aligned with embedding order) ==================
 @dataclass
 class FlatIndex:
-    keys: List[str]  # Keys in flattened order
-    counts: List[int]  # Sample count per key
-    offsets: List[int]  # Global offset per key
-    mol_to_indices: Dict[str, np.ndarray]  # mol_id -> global indices
+    keys: list[str]  # Keys in flattened order
+    counts: list[int]  # Sample count per key
+    offsets: list[int]  # Global offset per key
+    mol_to_indices: dict[str, np.ndarray]  # mol_id -> global indices
     en_labels: np.ndarray  # Global array of en labels
     mol_labels: np.ndarray  # Global array of mol_ids
 
-def build_flat_index(key_to_mols: Dict[str, List[Any]]) -> FlatIndex:
+
+def build_flat_index(key_to_mols: dict[str, list[Any]]) -> FlatIndex:
     keys, counts, offsets = [], [], []
-    mol_idx_map: Dict[str, List[int]] = {}
+    mol_idx_map: dict[str, list[int]] = {}
     en_labels = []
     mol_labels = []
 
@@ -82,10 +97,10 @@ def build_flat_index(key_to_mols: Dict[str, List[Any]]) -> FlatIndex:
     return FlatIndex(keys, counts, offsets, mol_to_indices, en_labels, mol_labels)
 
 
-def build_flat_index_from_counts(key_to_counts: Dict[str, int]) -> FlatIndex:
+def build_flat_index_from_counts(key_to_counts: dict[str, int]) -> FlatIndex:
     """Build flat indices from a mapping of key to conformer counts."""
     keys, counts, offsets = [], [], []
-    mol_idx_map: Dict[str, List[int]] = {}
+    mol_idx_map: dict[str, list[int]] = {}
     en_labels = []
     mol_labels = []
 
@@ -121,14 +136,16 @@ def is_fingerprint_list(embeddings: Any) -> bool:
             return True
     return False
 
+
 def euclidean_distances(X: np.ndarray) -> np.ndarray:
     if _HAS_SK and pairwise_distances is not None:
         return pairwise_distances(X, metric="euclidean")
     # Manual numpy fallback
     G = X @ X.T
     s = np.sum(X**2, axis=1, keepdims=True)
-    D2 = np.maximum(s + s.T - 2*G, 0.0)
+    D2 = np.maximum(s + s.T - 2 * G, 0.0)
     return np.sqrt(D2, dtype=float)
+
 
 def tanimoto_distance_matrix(fps: Sequence[Any]) -> np.ndarray:
     """Compute a Tanimoto distance matrix with RDKit (``D_ij = 1 - sim_ij``)."""
@@ -140,11 +157,12 @@ def tanimoto_distance_matrix(fps: Sequence[Any]) -> np.ndarray:
     for i in range(n):
         sims = DS.BulkTanimotoSimilarity(fps[i], fps)
         # Convert similarity to distance
-        for j in range(i+1, n):
+        for j in range(i + 1, n):
             dij = 1.0 - float(sims[j])
             D[i, j] = dij
             D[j, i] = dij
     return D
+
 
 def pairwise_distances_from_embeddings(
     Z: np.ndarray,
@@ -173,14 +191,11 @@ def pairwise_distances_from_embeddings(
         return 1.0 - S
     else:
         if pairwise_distances is None:
-            raise RuntimeError("scikit-learn is required for metric='%s'" % metric)
+            raise RuntimeError(f"scikit-learn is required for metric='{metric}'")
         return pairwise_distances(Z, metric=metric)
 
-def distance_matrix_for_subset(
-    embeddings: Union[np.ndarray, Sequence[Any]],
-    idxs: np.ndarray,
-    mode: str
-) -> np.ndarray:
+
+def distance_matrix_for_subset(embeddings: Union[np.ndarray, Sequence[Any]], idxs: np.ndarray, mode: str) -> np.ndarray:
     """Return the distance matrix for the selected subset."""
     if mode == "continuous":
         X = embeddings[idxs]  # (n,d)
@@ -216,6 +231,7 @@ def auc_diff_pairs_large_when_different(D: np.ndarray, y: np.ndarray) -> float:
     auc = U / (pos.sum() * (pos.size - pos.sum()) + 1e-12)
     return float(auc)
 
+
 def silhouette_with_labels_from_D(D: np.ndarray, y: np.ndarray) -> float:
     y = np.asarray(y)
     if len(np.unique(y)) < 2 or D.shape[0] < 3:
@@ -230,7 +246,7 @@ def silhouette_with_labels_from_D(D: np.ndarray, y: np.ndarray) -> float:
     labels = np.unique(y)
     s_vals = []
     for i in range(n):
-        same = (y == y[i])
+        same = y == y[i]
         if same.sum() <= 1:
             continue
         a = D[i, same].sum() / (same.sum() - 1)
@@ -238,7 +254,7 @@ def silhouette_with_labels_from_D(D: np.ndarray, y: np.ndarray) -> float:
         for c in labels:
             if c == y[i]:
                 continue
-            mask = (y == c)
+            mask = y == c
             if mask.sum() == 0:
                 continue
             b = min(b, D[i, mask].mean())
@@ -248,7 +264,8 @@ def silhouette_with_labels_from_D(D: np.ndarray, y: np.ndarray) -> float:
         s_vals.append(s)
     return float(np.mean(s_vals)) if s_vals else np.nan
 
-def _cluster_medoids_from_D(D: np.ndarray, y: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+
+def _cluster_medoids_from_D(D: np.ndarray, y: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
     """Return medoid indices per class and the associated intra-class scatter."""
     labels = np.unique(y)
     medoids = []
@@ -267,6 +284,7 @@ def _cluster_medoids_from_D(D: np.ndarray, y: np.ndarray) -> Tuple[np.ndarray, n
         S.append(float(np.mean(D[k, idx])))
     return np.asarray(medoids, dtype=int), np.asarray(S, dtype=float)
 
+
 def davies_bouldin_from_D(D: np.ndarray, y: np.ndarray, mode: str) -> float:
     """Compute the Davies-Bouldin index, falling back to a medoid approximation."""
     y = np.asarray(y)
@@ -276,7 +294,7 @@ def davies_bouldin_from_D(D: np.ndarray, y: np.ndarray, mode: str) -> float:
         # Requires features rather than distances; fall back to the medoid version to avoid extra deps
         pass
     # medoid-DBI
-    labels = np.unique(y)
+    np.unique(y)
     medoids, S = _cluster_medoids_from_D(D, y)
     # Distances between medoids
     M = D[np.ix_(medoids, medoids)].copy()
@@ -285,6 +303,7 @@ def davies_bouldin_from_D(D: np.ndarray, y: np.ndarray, mode: str) -> float:
     np.fill_diagonal(R, -np.inf)
     DBI = np.mean(np.max(R, axis=1))
     return float(DBI)
+
 
 def nn1_leave_one_out_from_D(D: np.ndarray, y: np.ndarray) -> float:
     n = D.shape[0]
@@ -295,6 +314,7 @@ def nn1_leave_one_out_from_D(D: np.ndarray, y: np.ndarray) -> float:
     nn = np.argmin(D2, axis=1)
     pred = np.asarray(y)[nn]
     return float(np.mean(pred == y))
+
 
 def boundary_clarity_from_D(D: np.ndarray, y: np.ndarray, q_intra: float = 0.90, q_inter: float = 0.10) -> float:
     y = np.asarray(y)
@@ -351,7 +371,10 @@ def hopkins_statistic(X: np.ndarray, m: Optional[int] = None, rng: Optional[np.r
     Y = np.sqrt(D2.min(axis=1)).sum()
     return float(W / (W + Y + 1e-12))
 
-def pam_kmedoids(D: np.ndarray, k: int, max_iter: int = 50, rng: Optional[np.random.Generator] = None) -> Tuple[np.ndarray, np.ndarray]:
+
+def pam_kmedoids(
+    D: np.ndarray, k: int, max_iter: int = 50, rng: Optional[np.random.Generator] = None
+) -> tuple[np.ndarray, np.ndarray]:
     """Simple PAM k-medoids over a precomputed distance matrix; returns labels and medoids."""
     rng = rng or np.random.default_rng(0)
     n = D.shape[0]
@@ -367,7 +390,7 @@ def pam_kmedoids(D: np.ndarray, k: int, max_iter: int = 50, rng: Optional[np.ran
     for _ in range(max_iter):
         improved = False
         for m_idx in range(k):
-            m_cur = medoids[m_idx]
+            medoids[m_idx]
             for cand in range(n):
                 if cand in medoids:
                     continue
@@ -384,8 +407,6 @@ def pam_kmedoids(D: np.ndarray, k: int, max_iter: int = 50, rng: Optional[np.ran
             break
     return labels, medoids
 
-from typing import Optional, Tuple
-import numpy as np
 
 # Optional third-party clustering libraries
 try:
@@ -401,6 +422,7 @@ except Exception:
 try:
     from sklearn.cluster import KMeans
     from sklearn.metrics import silhouette_score as _silhouette_score
+
     _HAS_SK = True
 except Exception:
     KMeans = None
@@ -416,8 +438,8 @@ def best_unsup_silhouette_from_D_or_X(
     kmax: int = 6,
     n_init: int = 10,
     random_state: int = 0,
-    fp_backend: str = "kmedoids",   # {"kmedoids","agglomerative","custom"}
-) -> Tuple[float, Optional[int], Optional[np.ndarray]]:
+    fp_backend: str = "kmedoids",  # {"kmedoids","agglomerative","custom"}
+) -> tuple[float, Optional[int], Optional[np.ndarray]]:
     """Unified unsupervised interface across continuous and fingerprint modes.
 
     - ``mode == "continuous"``: run sklearn KMeans on ``X`` with Euclidean silhouette.
@@ -490,13 +512,9 @@ def best_unsup_silhouette_from_D_or_X(
         try:
             # Handle sklearn API differences: metric="precomputed" vs affinity="precomputed"
             try:
-                model = _AgglomerativeClustering(
-                    n_clusters=k, metric="precomputed", linkage="average"
-                )
+                model = _AgglomerativeClustering(n_clusters=k, metric="precomputed", linkage="average")
             except TypeError:
-                model = _AgglomerativeClustering(
-                    n_clusters=k, affinity="precomputed", linkage="average"
-                )
+                model = _AgglomerativeClustering(n_clusters=k, affinity="precomputed", linkage="average")
             lab = model.fit(dist).labels_
             return lab
         except Exception:
@@ -537,7 +555,7 @@ def best_unsup_silhouette_from_D_or_X(
 
 # ===================== 6) Evaluation interface (one row per molecule) =====================
 def evaluate_en_separation(
-    key_to_mols: Dict[str, List[Any]],
+    key_to_mols: dict[str, list[Any]],
     embeddings: Union[np.ndarray, Sequence[Any]],
     *,
     per_mol_min_n: int = 2,
@@ -566,7 +584,6 @@ def evaluate_en_separation(
     rows = []
 
     cur_idx = 0
-    from tqdm import tqdm
 
     mol_items = list(flat.mol_to_indices.items())
     if max_molecules is not None:
@@ -576,16 +593,24 @@ def evaluate_en_separation(
     for mol_id, idxs in tqdm(mol_items):
         n = idxs.size
         if n < per_mol_min_n:
-            rows.append({
-                "mol_id": mol_id, "n": int(n),
-                "mode": "skip_small",
-                "ESA_AUC": np.nan, "NN1_acc": np.nan, "sil_sup": np.nan,
-                "DBI": np.nan, "clarity": np.nan,
-                "hopkins": np.nan, "sil_unsup": np.nan,
-                "k_unsup": np.nan, "clarity_unsup": np.nan,
-                "n_en_classes": 0,
-                "embedding_mode": mode
-            })
+            rows.append(
+                {
+                    "mol_id": mol_id,
+                    "n": int(n),
+                    "mode": "skip_small",
+                    "ESA_AUC": np.nan,
+                    "NN1_acc": np.nan,
+                    "sil_sup": np.nan,
+                    "DBI": np.nan,
+                    "clarity": np.nan,
+                    "hopkins": np.nan,
+                    "sil_unsup": np.nan,
+                    "k_unsup": np.nan,
+                    "clarity_unsup": np.nan,
+                    "n_en_classes": 0,
+                    "embedding_mode": mode,
+                }
+            )
             continue
 
         # Subset distance matrix
@@ -617,55 +642,80 @@ def evaluate_en_separation(
             )
             clar_unsup = boundary_clarity_from_D(D, lab_star) if lab_star is not None else np.nan
 
-            rows.append({
-                "mol_id": mol_id, "n": int(n),
-                "mode": "supervised+unsup",
-                "ESA_AUC": auc, "NN1_acc": nn1, "sil_sup": sils,
-                "DBI": dbi, "clarity": clar,
-                "hopkins": hop, "sil_unsup": silu,
-                "k_unsup": (np.nan if k_star is None else int(k_star)),
-                "clarity_unsup": clar_unsup,
-                "n_en_classes": n_en,
-                "embedding_mode": mode
-            })
+            rows.append(
+                {
+                    "mol_id": mol_id,
+                    "n": int(n),
+                    "mode": "supervised+unsup",
+                    "ESA_AUC": auc,
+                    "NN1_acc": nn1,
+                    "sil_sup": sils,
+                    "DBI": dbi,
+                    "clarity": clar,
+                    "hopkins": hop,
+                    "sil_unsup": silu,
+                    "k_unsup": (np.nan if k_star is None else int(k_star)),
+                    "clarity_unsup": clar_unsup,
+                    "n_en_classes": n_en,
+                    "embedding_mode": mode,
+                }
+            )
 
         else:
             # Default: skip entirely when there is only one en-class
             if not do_unsup_when_single_en:
-                rows.append({
-                    "mol_id": mol_id, "n": int(n),
-                    "mode": "skip_single_en",
-                    "ESA_AUC": np.nan, "NN1_acc": np.nan, "sil_sup": np.nan,
-                    "DBI": np.nan, "clarity": np.nan,
-                    "hopkins": hop, "sil_unsup": np.nan,
-                    "k_unsup": np.nan, "clarity_unsup": np.nan,
-                    "n_en_classes": n_en,
-                    "embedding_mode": mode
-                })
+                rows.append(
+                    {
+                        "mol_id": mol_id,
+                        "n": int(n),
+                        "mode": "skip_single_en",
+                        "ESA_AUC": np.nan,
+                        "NN1_acc": np.nan,
+                        "sil_sup": np.nan,
+                        "DBI": np.nan,
+                        "clarity": np.nan,
+                        "hopkins": hop,
+                        "sil_unsup": np.nan,
+                        "k_unsup": np.nan,
+                        "clarity_unsup": np.nan,
+                        "n_en_classes": n_en,
+                        "embedding_mode": mode,
+                    }
+                )
             else:
                 silu, k_star, lab_star = best_unsup_silhouette_from_D_or_X(
                     mode=mode, D=D, X=X_sub, kmin=2, kmax=unsup_kmax
                 )
                 clar_unsup = boundary_clarity_from_D(D, lab_star) if lab_star is not None else np.nan
-                rows.append({
-                    "mol_id": mol_id, "n": int(n),
-                    "mode": "unsupervised_only",
-                    "ESA_AUC": np.nan, "NN1_acc": np.nan, "sil_sup": np.nan,
-                    "DBI": np.nan, "clarity": np.nan,
-                    "hopkins": hop, "sil_unsup": silu,
-                    "k_unsup": (np.nan if k_star is None else int(k_star)),
-                    "clarity_unsup": clar_unsup,
-                    "n_en_classes": n_en,
-                    "embedding_mode": mode
-                })
+                rows.append(
+                    {
+                        "mol_id": mol_id,
+                        "n": int(n),
+                        "mode": "unsupervised_only",
+                        "ESA_AUC": np.nan,
+                        "NN1_acc": np.nan,
+                        "sil_sup": np.nan,
+                        "DBI": np.nan,
+                        "clarity": np.nan,
+                        "hopkins": hop,
+                        "sil_unsup": silu,
+                        "k_unsup": (np.nan if k_star is None else int(k_star)),
+                        "clarity_unsup": clar_unsup,
+                        "n_en_classes": n_en,
+                        "embedding_mode": mode,
+                    }
+                )
         cur_idx += 1
 
     # Aggregate macro-average across molecules
-    def _agg_mean(xs): 
-        a = np.asarray(xs, float); a = a[np.isfinite(a)]
+    def _agg_mean(xs):
+        a = np.asarray(xs, float)
+        a = a[np.isfinite(a)]
         return float(a.mean()) if a.size else np.nan
+
     def _agg_med(xs):
-        a = np.asarray(xs, float); a = a[np.isfinite(a)]
+        a = np.asarray(xs, float)
+        a = a[np.isfinite(a)]
         return float(np.median(a)) if a.size else np.nan
 
     ESA = [r["ESA_AUC"] for r in rows]
@@ -679,23 +729,31 @@ def evaluate_en_separation(
     CUS = [r["clarity_unsup"] for r in rows]
 
     summary = {
-        "ESA_AUC_mean": _agg_mean(ESA), "ESA_AUC_median": _agg_med(ESA),
-        "NN1_acc_mean": _agg_mean(NN1), "NN1_acc_median": _agg_med(NN1),
-        "sil_sup_mean": _agg_mean(SIL), "sil_sup_median": _agg_med(SIL),
-        "DBI_mean": _agg_mean(DBI), "DBI_median": _agg_med(DBI),
-        "clarity_mean": _agg_mean(CLR), "clarity_median": _agg_med(CLR),
-        "hopkins_mean": _agg_mean(HOP), "hopkins_median": _agg_med(HOP),
-        "sil_unsup_mean": _agg_mean(SUS), "sil_unsup_median": _agg_med(SUS),
+        "ESA_AUC_mean": _agg_mean(ESA),
+        "ESA_AUC_median": _agg_med(ESA),
+        "NN1_acc_mean": _agg_mean(NN1),
+        "NN1_acc_median": _agg_med(NN1),
+        "sil_sup_mean": _agg_mean(SIL),
+        "sil_sup_median": _agg_med(SIL),
+        "DBI_mean": _agg_mean(DBI),
+        "DBI_median": _agg_med(DBI),
+        "clarity_mean": _agg_mean(CLR),
+        "clarity_median": _agg_med(CLR),
+        "hopkins_mean": _agg_mean(HOP),
+        "hopkins_median": _agg_med(HOP),
+        "sil_unsup_mean": _agg_mean(SUS),
+        "sil_unsup_median": _agg_med(SUS),
         "k_unsup_median": _agg_med(KUS),
-        "clarity_unsup_mean": _agg_mean(CUS), "clarity_unsup_median": _agg_med(CUS),
-        "n_molecules": len(rows)
+        "clarity_unsup_mean": _agg_mean(CUS),
+        "clarity_unsup_median": _agg_med(CUS),
+        "n_molecules": len(rows),
     }
 
     return rows, summary
 
 
 def evaluate_en_separation_from_counts(
-    key_to_counts: Dict[str, int],
+    key_to_counts: dict[str, int],
     embeddings: Union[np.ndarray, Sequence[Any]],
     *,
     per_mol_min_n: int = 2,
@@ -729,16 +787,24 @@ def evaluate_en_separation_from_counts(
     for mol_id, idxs in mol_items:
         n = idxs.size
         if n < per_mol_min_n:
-            rows.append({
-                "mol_id": mol_id, "n": int(n),
-                "mode": "skip_small",
-                "ESA_AUC": np.nan, "NN1_acc": np.nan, "sil_sup": np.nan,
-                "DBI": np.nan, "clarity": np.nan,
-                "hopkins": np.nan, "sil_unsup": np.nan,
-                "k_unsup": np.nan, "clarity_unsup": np.nan,
-                "n_en_classes": 0,
-                "embedding_mode": mode,
-            })
+            rows.append(
+                {
+                    "mol_id": mol_id,
+                    "n": int(n),
+                    "mode": "skip_small",
+                    "ESA_AUC": np.nan,
+                    "NN1_acc": np.nan,
+                    "sil_sup": np.nan,
+                    "DBI": np.nan,
+                    "clarity": np.nan,
+                    "hopkins": np.nan,
+                    "sil_unsup": np.nan,
+                    "k_unsup": np.nan,
+                    "clarity_unsup": np.nan,
+                    "n_en_classes": 0,
+                    "embedding_mode": mode,
+                }
+            )
             continue
 
         D = distance_matrix_for_subset(embeddings, idxs, mode)
@@ -765,45 +831,67 @@ def evaluate_en_separation_from_counts(
             )
             clar_unsup = boundary_clarity_from_D(D, lab_star) if lab_star is not None else np.nan
 
-            rows.append({
-                "mol_id": mol_id, "n": int(n),
-                "mode": "supervised+unsup",
-                "ESA_AUC": auc, "NN1_acc": nn1, "sil_sup": sils,
-                "DBI": dbi, "clarity": clar,
-                "hopkins": hop, "sil_unsup": silu,
-                "k_unsup": (np.nan if k_star is None else int(k_star)),
-                "clarity_unsup": clar_unsup,
-                "n_en_classes": n_en,
-                "embedding_mode": mode,
-            })
-        else:
-            if not do_unsup_when_single_en:
-                rows.append({
-                    "mol_id": mol_id, "n": int(n),
-                    "mode": "skip_single_en",
-                    "ESA_AUC": np.nan, "NN1_acc": np.nan, "sil_sup": np.nan,
-                    "DBI": np.nan, "clarity": np.nan,
-                    "hopkins": hop, "sil_unsup": np.nan,
-                    "k_unsup": np.nan, "clarity_unsup": np.nan,
+            rows.append(
+                {
+                    "mol_id": mol_id,
+                    "n": int(n),
+                    "mode": "supervised+unsup",
+                    "ESA_AUC": auc,
+                    "NN1_acc": nn1,
+                    "sil_sup": sils,
+                    "DBI": dbi,
+                    "clarity": clar,
+                    "hopkins": hop,
+                    "sil_unsup": silu,
+                    "k_unsup": (np.nan if k_star is None else int(k_star)),
+                    "clarity_unsup": clar_unsup,
                     "n_en_classes": n_en,
                     "embedding_mode": mode,
-                })
+                }
+            )
+        else:
+            if not do_unsup_when_single_en:
+                rows.append(
+                    {
+                        "mol_id": mol_id,
+                        "n": int(n),
+                        "mode": "skip_single_en",
+                        "ESA_AUC": np.nan,
+                        "NN1_acc": np.nan,
+                        "sil_sup": np.nan,
+                        "DBI": np.nan,
+                        "clarity": np.nan,
+                        "hopkins": hop,
+                        "sil_unsup": np.nan,
+                        "k_unsup": np.nan,
+                        "clarity_unsup": np.nan,
+                        "n_en_classes": n_en,
+                        "embedding_mode": mode,
+                    }
+                )
             else:
                 silu, k_star, lab_star = best_unsup_silhouette_from_D_or_X(
                     mode=mode, D=D, X=X_sub, kmin=2, kmax=unsup_kmax
                 )
                 clar_unsup = boundary_clarity_from_D(D, lab_star) if lab_star is not None else np.nan
-                rows.append({
-                    "mol_id": mol_id, "n": int(n),
-                    "mode": "unsupervised_only",
-                    "ESA_AUC": np.nan, "NN1_acc": np.nan, "sil_sup": np.nan,
-                    "DBI": np.nan, "clarity": np.nan,
-                    "hopkins": hop, "sil_unsup": silu,
-                    "k_unsup": (np.nan if k_star is None else int(k_star)),
-                    "clarity_unsup": clar_unsup,
-                    "n_en_classes": n_en,
-                    "embedding_mode": mode,
-                })
+                rows.append(
+                    {
+                        "mol_id": mol_id,
+                        "n": int(n),
+                        "mode": "unsupervised_only",
+                        "ESA_AUC": np.nan,
+                        "NN1_acc": np.nan,
+                        "sil_sup": np.nan,
+                        "DBI": np.nan,
+                        "clarity": np.nan,
+                        "hopkins": hop,
+                        "sil_unsup": silu,
+                        "k_unsup": (np.nan if k_star is None else int(k_star)),
+                        "clarity_unsup": clar_unsup,
+                        "n_en_classes": n_en,
+                        "embedding_mode": mode,
+                    }
+                )
 
     def _agg_mean(xs):
         a = np.asarray(xs, float)
@@ -826,33 +914,28 @@ def evaluate_en_separation_from_counts(
     CUS = [r["clarity_unsup"] for r in rows]
 
     summary = {
-        "ESA_AUC_mean": _agg_mean(ESA), "ESA_AUC_median": _agg_med(ESA),
-        "NN1_acc_mean": _agg_mean(NN1), "NN1_acc_median": _agg_med(NN1),
-        "sil_sup_mean": _agg_mean(SIL), "sil_sup_median": _agg_med(SIL),
-        "DBI_mean": _agg_mean(DBI), "DBI_median": _agg_med(DBI),
-        "clarity_mean": _agg_mean(CLR), "clarity_median": _agg_med(CLR),
-        "hopkins_mean": _agg_mean(HOP), "hopkins_median": _agg_med(HOP),
-        "sil_unsup_mean": _agg_mean(SUS), "sil_unsup_median": _agg_med(SUS),
+        "ESA_AUC_mean": _agg_mean(ESA),
+        "ESA_AUC_median": _agg_med(ESA),
+        "NN1_acc_mean": _agg_mean(NN1),
+        "NN1_acc_median": _agg_med(NN1),
+        "sil_sup_mean": _agg_mean(SIL),
+        "sil_sup_median": _agg_med(SIL),
+        "DBI_mean": _agg_mean(DBI),
+        "DBI_median": _agg_med(DBI),
+        "clarity_mean": _agg_mean(CLR),
+        "clarity_median": _agg_med(CLR),
+        "hopkins_mean": _agg_mean(HOP),
+        "hopkins_median": _agg_med(HOP),
+        "sil_unsup_mean": _agg_mean(SUS),
+        "sil_unsup_median": _agg_med(SUS),
         "k_unsup_median": _agg_med(KUS),
-        "clarity_unsup_mean": _agg_mean(CUS), "clarity_unsup_median": _agg_med(CUS),
+        "clarity_unsup_mean": _agg_mean(CUS),
+        "clarity_unsup_median": _agg_med(CUS),
         "n_molecules": len(rows),
     }
 
     return rows, summary
 
-
-import os
-import json
-import pickle
-from pathlib import Path
-from typing import Dict, Tuple, Any
-
-import numpy as np
-import pandas as pd
-from concurrent.futures import ProcessPoolExecutor, as_completed
-from tqdm import tqdm
-from rdkit import rdBase
-from three_dbench.utils.paths import DATA_ROOT as GLOBAL_DATA_ROOT, RESULTS_ROOT as GLOBAL_RESULTS_ROOT
 
 # ========= Configuration =========
 DATA_ROOT = GLOBAL_DATA_ROOT / "chirality"
@@ -864,16 +947,17 @@ N_WORKERS = min(6, os.cpu_count() or 2)
 # Model definitions and loader settings (name, path, loader_type, key)
 MODEL_SPECS = [
     ("molspectra", str(DATA_ROOT / "molspectra" / "sampled_mol_feature.npz"), "npz", "arr_0"),
-    ("unimol",     str(DATA_ROOT / "unimol" / "1.npz"),              "npz", "arr_0"),
-    ("gemnet",     str(DATA_ROOT / "gemnet" / "sampled_feature.npz"), "npz", "gemnet"),
-    ("molae",      str(DATA_ROOT / "molae" / "1.npz"),               "npz", "arr_0"),
-    ("e3fp",       str(DATA_ROOT / "fingerprint" / "sampled_chi.pkl"),       "pkl_dict", "e3fp"),
+    ("unimol", str(DATA_ROOT / "unimol" / "1.npz"), "npz", "arr_0"),
+    ("gemnet", str(DATA_ROOT / "gemnet" / "sampled_feature.npz"), "npz", "gemnet"),
+    ("molae", str(DATA_ROOT / "molae" / "1.npz"), "npz", "arr_0"),
+    ("e3fp", str(DATA_ROOT / "fingerprint" / "sampled_chi.pkl"), "pkl_dict", "e3fp"),
 ]
 
 # ========= Existing evaluation function =========
 # Assumes ``evaluate_en_separation`` is imported and available.
 
 BASE_DICT = None  # Read-only cache shared by worker processes
+
 
 def _worker_init(base_dict_pkl: str):
     """Load the base dictionary once per worker to avoid repeated large IPC transfers."""
@@ -886,6 +970,7 @@ def _worker_init(base_dict_pkl: str):
     with open(base_dict_pkl, "rb") as f:
         BASE_DICT = pickle.load(f)
 
+
 def _load_array(path: str, loader: str, key: str):
     if loader == "npz":
         with np.load(path) as data:
@@ -896,19 +981,23 @@ def _load_array(path: str, loader: str, key: str):
     else:
         raise ValueError(f"Unknown loader: {loader}")
 
-def _run_one(model_name: str, path: str, loader: str, key: str, max_molecules: Optional[int] = None) -> Tuple[str, Dict[str, Any], Dict[str, Any]]:
+
+def _run_one(
+    model_name: str, path: str, loader: str, key: str, max_molecules: Optional[int] = None
+) -> tuple[str, dict[str, Any], dict[str, Any]]:
     """Evaluate a single model and return ``(model_name, result_dict, summary_dict)``."""
     arr = _load_array(path, loader, key)
     # Delegate to the user-provided evaluation function
     result, summary = evaluate_en_separation(BASE_DICT, arr, max_molecules=max_molecules)
     return model_name, result, summary
 
+
 def run_chirality_benchmark(
     *,
     max_workers: Optional[int] = None,
     base_dict_path: Optional[Path] = None,
     output_dir: Optional[Path] = None,
-    model_specs: Optional[List[Tuple[str, str, str, str]]] = None,
+    model_specs: Optional[list[tuple[str, str, str, str]]] = None,
     max_molecules: Optional[int] = None,  # Quick test: limit number of molecules
 ) -> None:
     """Execute the chirality benchmark with optional overrides."""
@@ -962,8 +1051,10 @@ def run_chirality_benchmark(
     else:
         print("\nNo summaries were produced. Check errors.log.")
 
+
 def main():
     run_chirality_benchmark()
+
 
 if __name__ == "__main__":
     main()

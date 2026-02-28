@@ -1,8 +1,8 @@
 """Tests for chirality evaluation logic."""
+
 from __future__ import annotations
 
 import numpy as np
-import pytest
 
 from three_dbench.chirality.evaluation import (
     build_flat_index_from_counts,

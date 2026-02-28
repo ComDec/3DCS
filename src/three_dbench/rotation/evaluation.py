@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Rotation geometry evaluation with optional shard sampling and batching.
 
 Highlights:
@@ -8,18 +7,17 @@ Highlights:
 - Aggregates shard outputs into gzipped JSON summaries.
 """
 
-import os
-import time
-import json
 import gzip
+import json
+import os
 import pickle
-from pathlib import Path
+import time
 from concurrent.futures import ProcessPoolExecutor, as_completed
-from typing import Optional, Tuple, List, Dict
+from typing import Optional
 
+import lmdb
 import numpy as np
 from numpy.linalg import norm
-import lmdb
 from rdkit import Chem, DataStructs
 from rdkit.Chem import rdMolAlign
 from rdkit.Chem.rdchem import Conformer
@@ -38,7 +36,8 @@ from three_dbench.common.metrics import (
     torsion_embedding_spearman,
     triplet_order_preservation,
 )
-from three_dbench.utils.paths import DATA_ROOT as GLOBAL_DATA_ROOT, RESULTS_ROOT as GLOBAL_RESULTS_ROOT
+from three_dbench.utils.paths import DATA_ROOT as GLOBAL_DATA_ROOT
+from three_dbench.utils.paths import RESULTS_ROOT as GLOBAL_RESULTS_ROOT
 
 # =========================
 # Global evaluation configuration
@@ -58,25 +57,30 @@ SAMPLE_RATIO_SAMPLES = 0.1  # Fraction of keys to evaluate; 1.0 = evaluate every
 SAMPLE_MAX_SAMPLES = None  # Optional hard cap per shard (e.g. 500)
 SAMPLE_SEED = 12345  # Reproducible sampling seed
 
+
 # =========================
 # Utility helpers
 # =========================
 def _set_rng(seed: Optional[int] = None):
     return np.random.default_rng(seed)
 
+
 # =========================
 # Angle and RMSD utilities
 # =========================
 _TWOPI = 2.0 * np.pi
 
+
 def _deg_to_rad_wrap(phi_deg: np.ndarray) -> np.ndarray:
     phi_rad = np.deg2rad(phi_deg.astype(np.float64, copy=False))
     return np.mod(phi_rad, _TWOPI)
+
 
 def _angular_diff_matrix_from_degrees(phi_deg: np.ndarray) -> np.ndarray:
     phi = _deg_to_rad_wrap(np.asarray(phi_deg).reshape(-1))
     d = np.abs(phi[:, None] - phi[None, :])
     return np.minimum(d, _TWOPI - d, out=d)
+
 
 def _torus_diff_matrix_from_degrees(Phi_deg: np.ndarray) -> np.ndarray:
     Phi = np.asarray(Phi_deg, dtype=np.float64)
@@ -91,7 +95,8 @@ def _torus_diff_matrix_from_degrees(Phi_deg: np.ndarray) -> np.ndarray:
         acc += d * d
     return np.sqrt(acc, out=acc)
 
-def merge_mols_as_conformers(mols: List[Chem.Mol], remove_hs: bool = True) -> Chem.Mol:
+
+def merge_mols_as_conformers(mols: list[Chem.Mol], remove_hs: bool = True) -> Chem.Mol:
     if not mols:
         raise ValueError("Received an empty molecule list")
     proc = [Chem.RemoveHs(m) if remove_hs else Chem.AddHs(m, addCoords=True) for m in mols]
@@ -112,6 +117,7 @@ def merge_mols_as_conformers(mols: List[Chem.Mol], remove_hs: bool = True) -> Ch
         base.AddConformer(conf_new, assignId=True)
     return base
 
+
 def rmsd_matrix_from_one_mol(mol_list: list) -> np.ndarray:
     mol = merge_mols_as_conformers(mol_list, remove_hs=True)
     cids = [conf.GetId() for conf in mol.GetConformers()]
@@ -123,6 +129,7 @@ def rmsd_matrix_from_one_mol(mol_list: list) -> np.ndarray:
             rms = rdMolAlign.GetBestRMS(mol, mol, prbId=ci, refId=cids[j])
             D[i, j] = D[j, i] = float(rms)
     return D
+
 
 # =========================
 # Distance matrices from embeddings/fingerprints
@@ -149,7 +156,8 @@ def pairwise_distances_from_embeddings(
     else:
         return pairwise_distances(Z, metric=metric)
 
-def pairwise_distances_from_fingerprint(Z: List) -> np.ndarray:
+
+def pairwise_distances_from_fingerprint(Z: list) -> np.ndarray:
     L = len(Z)
     sim = np.eye(L, dtype=np.float32)
     for i in range(L - 1):
@@ -158,6 +166,7 @@ def pairwise_distances_from_fingerprint(Z: List) -> np.ndarray:
         sim[i + 1 :, i] = sims
     return (1.0 - sim).astype(np.float64, copy=False)
 
+
 # =========================
 # Metric computation (handled via shared module)
 # =========================
@@ -165,7 +174,7 @@ def compute_all_geometry_metrics(
     D: np.ndarray,
     Z: Optional[np.ndarray] = None,
     Delta: Optional[np.ndarray] = None,
-    deg: Optional[List[float]] = None,
+    deg: Optional[list[float]] = None,
     delta_metric: str = "cosine",
     embedding_type: str = "fp",
     max_pairs_spearman: Optional[int] = None,
@@ -196,9 +205,12 @@ def compute_all_geometry_metrics(
     out["A2_kendall"] = kendall_correlation(D, Delta, max_pairs=max_pairs_kendall, random_state=random_state)
     out["B_dcor"] = distance_correlation(D, Delta)
     rM, pM = mantel_test(D, Delta, n_permutations=mantel_permutations, method="spearman", random_state=random_state)
-    out["C_mantel_r"] = rM; out["C_mantel_p"] = pM
+    out["C_mantel_r"] = rM
+    out["C_mantel_p"] = pM
     stress1, a_fit, b_fit = kruskal_stress(D, Delta)
-    out["D_stress1"] = stress1; out["D_fit_a"] = a_fit; out["D_fit_b"] = b_fit
+    out["D_stress1"] = stress1
+    out["D_fit_a"] = a_fit
+    out["D_fit_b"] = b_fit
     out["E_triplet_OP"] = triplet_order_preservation(D, Delta, n_triplets=triplets, random_state=random_state)
     out["G_cka_rbf"] = cka_rbf(D, Delta, sigma_a=cka_sigma_D, sigma_b=cka_sigma_Delta)
     k_neighbors = int(min(max(1, k_neighbors), D.shape[0] - 1))
@@ -209,8 +221,10 @@ def compute_all_geometry_metrics(
         out["torsion_sp"] = torsion_embedding_spearman(Delta, deg_arr)
         out["AS"] = angular_smoothness(Delta, deg_arr, circular=True)["AS"]
     else:
-        out["torsion_sp"] = np.nan; out["AS"] = np.nan
+        out["torsion_sp"] = np.nan
+        out["AS"] = np.nan
     return out
+
 
 # =========================
 # Parallel shard processing (sample-level)
@@ -230,6 +244,7 @@ OUT_DIR.mkdir(parents=True, exist_ok=True)
 REPORT_SEC = 5.0
 METRICS = ("cosine", "euclidean")  # Use ("cosine",) to reduce runtime if needed
 
+
 def _pin_threads_single():
     os.environ["OMP_NUM_THREADS"] = "1"
     os.environ["OPENBLAS_NUM_THREADS"] = "1"
@@ -237,10 +252,15 @@ def _pin_threads_single():
     os.environ["VECLIB_MAXIMUM_THREADS"] = "1"
     os.environ["NUMEXPR_NUM_THREADS"] = "1"
 
+
 def _fmt_eta(remain_items: int, rate: float) -> str:
-    if rate <= 0 or remain_items < 0: return "ETA: --"
-    secs = int(remain_items / rate); m, s = divmod(secs, 60); h, m = divmod(m, 60)
+    if rate <= 0 or remain_items < 0:
+        return "ETA: --"
+    secs = int(remain_items / rate)
+    m, s = divmod(secs, 60)
+    h, m = divmod(m, 60)
     return f"ETA: {h:02d}:{m:02d}:{s:02d}"
+
 
 def _select_sample_indices(total: int, ratio: float, max_n: Optional[int], seed: int) -> np.ndarray:
     """Return sorted key indices selected for evaluation."""
@@ -254,10 +274,13 @@ def _select_sample_indices(total: int, ratio: float, max_n: Optional[int], seed:
     idx = rng.choice(total, size=n_take, replace=False)
     return np.sort(idx)
 
-def process_shard(i: int,
-                  sample_ratio: float = SAMPLE_RATIO_SAMPLES,
-                  sample_max: Optional[int] = SAMPLE_MAX_SAMPLES,
-                  sample_seed: int = SAMPLE_SEED):
+
+def process_shard(
+    i: int,
+    sample_ratio: float = SAMPLE_RATIO_SAMPLES,
+    sample_max: Optional[int] = SAMPLE_MAX_SAMPLES,
+    sample_seed: int = SAMPLE_SEED,
+):
     _pin_threads_single()
 
     lmdb_fp_with_source_path = LMDB_FP_WITH_SOURCE_DIR / f"rot_{i}.lmdb"
@@ -272,8 +295,18 @@ def process_shard(i: int,
     arr_molspec = np.load(str(molspec_path))["arr_0"]
 
     # Open LMDB stores
-    env_fp = lmdb.open(str(lmdb_fp_with_source_path), subdir=False, readonly=True, lock=False, readahead=True, meminit=False, max_readers=64)
-    env_deg = lmdb.open(str(lmdb_deg_path),            subdir=False, readonly=True, lock=False, readahead=True, meminit=False, max_readers=64)
+    env_fp = lmdb.open(
+        str(lmdb_fp_with_source_path),
+        subdir=False,
+        readonly=True,
+        lock=False,
+        readahead=True,
+        meminit=False,
+        max_readers=64,
+    )
+    env_deg = lmdb.open(
+        str(lmdb_deg_path), subdir=False, readonly=True, lock=False, readahead=True, meminit=False, max_readers=64
+    )
 
     # Enumerate all keys in the shard
     with env_fp.begin() as txn:
@@ -283,13 +316,16 @@ def process_shard(i: int,
     sel_set = set(int(x) for x in sel_idx)
     print(f"[shard {i}] total={total}, take={len(sel_idx)} (ratio={sample_ratio}, max={sample_max})", flush=True)
 
-    out_e3fp: Dict[str, dict] = {}
-    out_unimol: Dict[str, dict] = {}
-    out_molae: Dict[str, dict] = {}
-    out_molspec: Dict[str, dict] = {}
+    out_e3fp: dict[str, dict] = {}
+    out_unimol: dict[str, dict] = {}
+    out_molae: dict[str, dict] = {}
+    out_molspec: dict[str, dict] = {}
 
     cur_idx = 0
-    t0 = time.time(); last_t = t0; processed = 0; seen = 0
+    t0 = time.time()
+    last_t = t0
+    processed = 0
+    seen = 0
 
     # Long-lived read transactions
     with env_fp.begin() as txn_fp, env_deg.begin() as txn_deg:
@@ -313,10 +349,10 @@ def process_shard(i: int,
             Z_e3fp = data_fp["e3fp"]["fps"]
             Delta_e3fp = pairwise_distances_from_fingerprint(Z_e3fp)
 
-            Z_unimol  = arr_unimol [cur_idx: cur_idx + L, :]
-            Z_molae   = arr_molae  [cur_idx: cur_idx + L, :]
-            Z_molspec = arr_molspec[cur_idx: cur_idx + L, :]
-            cur_idx  += L
+            Z_unimol = arr_unimol[cur_idx : cur_idx + L, :]
+            Z_molae = arr_molae[cur_idx : cur_idx + L, :]
+            Z_molspec = arr_molspec[cur_idx : cur_idx + L, :]
+            cur_idx += L
 
             str_key = k.decode("utf-8")
 
@@ -325,25 +361,30 @@ def process_shard(i: int,
 
             # Evaluate each embedding family
             out_unimol[str_key] = {}
-            out_molae[str_key]  = {}
-            out_molspec[str_key]= {}
+            out_molae[str_key] = {}
+            out_molspec[str_key] = {}
 
             for metric in METRICS:
-                Delta_unimol  = pairwise_distances_from_embeddings(Z_unimol,  metric=metric)
-                Delta_molae   = pairwise_distances_from_embeddings(Z_molae,   metric=metric)
+                Delta_unimol = pairwise_distances_from_embeddings(Z_unimol, metric=metric)
+                Delta_molae = pairwise_distances_from_embeddings(Z_molae, metric=metric)
                 Delta_molspec = pairwise_distances_from_embeddings(Z_molspec, metric=metric)
 
-                out_unimol[str_key][metric]  = compute_all_geometry_metrics(D, Z=None, Delta=Delta_unimol,  deg=deg_list)
-                out_molae[str_key][metric]   = compute_all_geometry_metrics(D, Z=None, Delta=Delta_molae,   deg=deg_list)
-                out_molspec[str_key][metric] = compute_all_geometry_metrics(D, Z=None, Delta=Delta_molspec, deg=deg_list)
+                out_unimol[str_key][metric] = compute_all_geometry_metrics(D, Z=None, Delta=Delta_unimol, deg=deg_list)
+                out_molae[str_key][metric] = compute_all_geometry_metrics(D, Z=None, Delta=Delta_molae, deg=deg_list)
+                out_molspec[str_key][metric] = compute_all_geometry_metrics(
+                    D, Z=None, Delta=Delta_molspec, deg=deg_list
+                )
 
             processed += 1
             now = time.time()
             if now - last_t >= REPORT_SEC:
                 rate = processed / (now - t0) if (now - t0) > 0 else 0.0
-                pct  = 100.0 * seen / total if total else 100.0
-                print(f"[shard {i}] seen {seen}/{total} ({pct:.1f}%), processed {processed}, "
-                      f"{rate:.2f} it/s | {_fmt_eta(len(sel_idx)-processed, rate)}", flush=True)
+                pct = 100.0 * seen / total if total else 100.0
+                print(
+                    f"[shard {i}] seen {seen}/{total} ({pct:.1f}%), processed {processed}, "
+                    f"{rate:.2f} it/s | {_fmt_eta(len(sel_idx) - processed, rate)}",
+                    flush=True,
+                )
                 last_t = now
 
     dt = time.time() - t0
@@ -351,11 +392,13 @@ def process_shard(i: int,
 
     return {"e3fp": out_e3fp, "unimol": out_unimol, "molae": out_molae, "molspec": out_molspec}
 
+
 def merge_dicts(big, part):
     big["e3fp"].update(part["e3fp"])
     big["unimol"].update(part["unimol"])
     big["molae"].update(part["molae"])
     big["molspec"].update(part["molspec"])
+
 
 def main(max_workers: Optional[int] = None):
     # Limit BLAS threads to prevent process x thread oversubscription
@@ -372,9 +415,13 @@ def main(max_workers: Optional[int] = None):
         cpu = os.cpu_count() or 8
         max_workers = min(8, cpu)
 
-    t0 = time.time(); done = 0
-    print(f"[main] launch {len(shards)} shards with max_workers={max_workers}; "
-          f"sample_ratio={SAMPLE_RATIO_SAMPLES}, sample_max={SAMPLE_MAX_SAMPLES}", flush=True)
+    t0 = time.time()
+    done = 0
+    print(
+        f"[main] launch {len(shards)} shards with max_workers={max_workers}; "
+        f"sample_ratio={SAMPLE_RATIO_SAMPLES}, sample_max={SAMPLE_MAX_SAMPLES}",
+        flush=True,
+    )
 
     with ProcessPoolExecutor(max_workers=max_workers, initializer=_pin_threads_single) as ex:
         futs = [ex.submit(process_shard, i, SAMPLE_RATIO_SAMPLES, SAMPLE_MAX_SAMPLES, SAMPLE_SEED) for i in shards]
@@ -382,12 +429,12 @@ def main(max_workers: Optional[int] = None):
             part = fut.result()
             merge_dicts(combined, part)
             done += 1
-            print(f"[main] shard {done}/{len(shards)} merged | elapsed {time.time()-t0:.1f}s", flush=True)
+            print(f"[main] shard {done}/{len(shards)} merged | elapsed {time.time() - t0:.1f}s", flush=True)
 
     out_path = OUT_DIR / "metrics_all_shards.json.gz"
     with gzip.open(out_path, "wt", encoding="utf-8") as f:
         json.dump(combined, f, ensure_ascii=False, separators=(",", ":"))
-    print(f"[Done] {out_path} | total {time.time()-t0:.1f}s", flush=True)
+    print(f"[Done] {out_path} | total {time.time() - t0:.1f}s", flush=True)
 
 
 def run_rotation_benchmark(*, max_workers: Optional[int] = None) -> None:

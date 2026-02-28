@@ -1,7 +1,6 @@
 """Basic unit tests for 3DBench."""
-from __future__ import annotations
 
-import numpy as np
+from __future__ import annotations
 
 from three_dbench.chirality.evaluation import evaluate_en_separation_from_counts
 from three_dbench.traj.evaluation import (
@@ -13,9 +12,7 @@ from three_dbench.traj.evaluation import (
 def test_chirality_counts(chirality_key_counts, rng):
     total = sum(chirality_key_counts.values())
     embeddings = rng.standard_normal((total, 6))
-    rows, summary = evaluate_en_separation_from_counts(
-        chirality_key_counts, embeddings, per_mol_min_n=2
-    )
+    rows, summary = evaluate_en_separation_from_counts(chirality_key_counts, embeddings, per_mol_min_n=2)
     assert len(rows) == 2
     assert summary["n_molecules"] == 2
     assert "ESA_AUC_mean" in summary
