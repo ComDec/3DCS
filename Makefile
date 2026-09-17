@@ -5,19 +5,20 @@ install:
 
 dev:
 	pip install -e ".[dev]"
-	pip install rdkit-pypi
 	pre-commit install
 
 test:
 	pytest
 
+LINT_PATHS = src/ tests/ examples/ reproduce/
+
 lint:
-	ruff check src/ tests/
-	ruff format --check src/ tests/
+	ruff check $(LINT_PATHS)
+	ruff format --check $(LINT_PATHS)
 
 format:
-	ruff check --fix src/ tests/
-	ruff format src/ tests/
+	ruff check --fix $(LINT_PATHS)
+	ruff format $(LINT_PATHS)
 
 clean:
 	rm -rf build/ dist/ *.egg-info .pytest_cache .mypy_cache .ruff_cache htmlcov/

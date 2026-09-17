@@ -10,7 +10,13 @@ readme = "README.md"
 license = {text = "MIT"}
 requires-python = ">=3.9"
 keywords = ["3d", "benchmark", "chemistry", "evaluation", "3dcs", "molecular-embeddings"]
-authors = [{ name = "3DCS Team" }]
+authors = [
+    { name = "Xi Wang" },
+    { name = "Yang Zhang" },
+    { name = "Yingjia Zhang" },
+    { name = "Yejia Cai" },
+    { name = "Shengjie Wang" },
+]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Science/Research",
@@ -27,7 +33,7 @@ dependencies = [
     "scipy>=1.9",
     "pandas>=1.5",
     "scikit-learn>=1.2",
-    "scikit-learn-extra>=0.3",
+    "rdkit>=2023.9",
     "lmdb>=1.4",
     "tqdm>=4.66",
     "matplotlib!=3.6.1,>=3.4",
@@ -35,9 +41,13 @@ dependencies = [
     "python-dateutil>=2.8",
     "datasets>=2.18",
     "pyarrow>=12",
+    "huggingface_hub>=0.20",
 ]
 
 [project.optional-dependencies]
+# Optional KMedoids backend for chirality unsupervised metrics (not used by default; the
+# scikit-learn-extra 0.3.0 wheels are built against numpy 1.x and fail to import with numpy 2).
+kmedoids = ["scikit-learn-extra>=0.3"]
 dev = [
     "pytest>=7.0",
     "pytest-cov>=4.0",
@@ -51,6 +61,9 @@ three-dbench = "three_dbench.__main__:main"
 [project.urls]
 Homepage = "https://github.com/ComDec/3DCS"
 Documentation = "https://github.com/ComDec/3DCS/tree/main/docs"
+Paper = "https://openreview.net/forum?id=JAb0y8lkqL"
+Datasets = "https://huggingface.co/datasets/EscheWang/3dcs"
+Embeddings = "https://huggingface.co/datasets/EscheWang/3dcs-embeddings"
 Issues = "https://github.com/ComDec/3DCS/issues"
 
 [tool.setuptools]
