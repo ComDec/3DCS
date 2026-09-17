@@ -55,7 +55,7 @@ def _parse_args() -> argparse.Namespace:
         "--metric-version",
         choices=["paper", "v2"],
         default="paper",
-        help="Energy metric definitions: paper = published numbers (default); v2 = appendix definitions",
+        help="Metric definitions: paper = as used for the published numbers (default); v2 = corrected (docs/metrics)",
     )
     evaluate.add_argument("--n-jobs", type=int, default=1, help="Trajectory worker processes")
     evaluate.add_argument("--molecules", type=str, nargs="*", default=None, help="Trajectory molecule subset")

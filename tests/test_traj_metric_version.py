@@ -52,6 +52,7 @@ def test_cka_bandwidth(window):
     assert v2["cka_rbf"] != pytest.approx(cka_rbf(dE, D.astype(np.float64), share_sigma=True))
 
 
+@pytest.mark.filterwarnings("ignore:An input array is constant")
 def test_isotonic_direction_constant_representation():
     E = synthetic_energies(80, seed=2)
     D = np.zeros(80 * 79 // 2, dtype=np.float32)  # constant representation
