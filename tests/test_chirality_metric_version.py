@@ -92,6 +92,10 @@ def test_hopkins_population_single_stereoisomer(rng):
     assert paper["mode"] == v2["mode"] == "skip_single_en"
     assert np.isfinite(paper["hopkins"])
     assert np.isnan(v2["hopkins"])
+    opt_in = ChiralitySettings(metric_version="v2", do_unsup_when_single_en=True, unsup_kmax=4)
+    v2_unsup = evaluate_molecule("M", X, y, "continuous", opt_in)
+    assert v2_unsup["mode"] == "unsupervised_only"
+    assert np.isnan(v2_unsup["hopkins"]) and np.isfinite(v2_unsup["sil_unsup"])
     small = evaluate_molecule(
         "S", X[:9], np.array(["0"] * 5 + ["1"] * 4, dtype=object), "continuous", ChiralitySettings()
     )

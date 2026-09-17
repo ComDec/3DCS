@@ -801,7 +801,7 @@ def evaluate_molecule(
         mode=mode, D=D, X=X_sub, kmin=2, kmax=kmax_unsup, fp_backend=fp_backend_single, silhouette_on=silhouette_on
     )
     clar_unsup = boundary_clarity_from_D(D, lab_star) if lab_star is not None else np.nan
-    row = _empty_row(mol_id, n, "unsupervised_only", mode, n_en=n_en, hop=hop)
+    row = _empty_row(mol_id, n, "unsupervised_only", mode, n_en=n_en, hop=(np.nan if v2 else hop))
     row.update(
         {
             "sil_unsup": silu,

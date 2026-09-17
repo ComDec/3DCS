@@ -33,7 +33,8 @@ def main() -> None:
             with path.open() as f:
                 summary = next(csv.DictReader(f))
             for label, col in METRICS:
-                value = float(summary[col])
+                raw = (summary.get(col) or "").strip()
+                value = float(raw) if raw else math.nan  # pandas writes NaN as an empty field
                 if math.isnan(value):  # e.g. Hopkins for fingerprints ("-" in the paper)
                     continue
                 rows.append({"table": "table2", "model": model, "metric": label, "variant": variant, "value": value})
