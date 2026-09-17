@@ -89,6 +89,20 @@ def _parse_args() -> argparse.Namespace:
     evaluate.add_argument("--per-mol-min-n", type=int, default=2, help="Chirality minimum conformers per molecule")
     evaluate.add_argument("--max-molecules", type=int, default=None, help="Chirality max molecules for testing")
     evaluate.add_argument("--do-unsup-when-single-en", action="store_true", help="Chirality unsupervised metrics")
+    # --- chirality options (defaults reproduce the published Table 2; see docs/metrics/chirality.md) ---
+    evaluate.add_argument(
+        "--distance",
+        choices=["euclidean", "cosine"],
+        default="euclidean",
+        help="Chirality: distance for continuous embeddings (default euclidean = published Table 2); "
+        "RDKit fingerprints always use Tanimoto",
+    )
+    evaluate.add_argument(
+        "--unsup-kmax",
+        type=_parse_unsup_kmax,
+        default=None,
+        help="Chirality: largest k for the best-k silhouette (SCI_unsup); 'n-1' (default, published run) or an int",
+    )
 
     download = subparsers.add_parser("download", help="Download datasets or published embeddings from Hugging Face")
     download.add_argument("what", choices=["dataset", "embeddings"], help="What to download")
@@ -107,6 +121,18 @@ def _parse_args() -> argparse.Namespace:
     download.add_argument("--dry-run", action="store_true", help="Embeddings: list files without downloading")
     download.add_argument("--overwrite", action="store_true", help="Dataset: replace an existing save_to_disk dir")
     return parser.parse_args()
+
+
+def _parse_unsup_kmax(value: str):
+    if value.lower() in {"n-1", "none", "all"}:
+        return None
+    try:
+        k = int(value)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError(f"--unsup-kmax must be 'n-1' or an integer >= 2, got {value!r}") from exc
+    if k < 2:
+        raise argparse.ArgumentTypeError(f"--unsup-kmax must be >= 2, got {k}")
+    return k
 
 
 def _convert_dataset(args: argparse.Namespace) -> None:
@@ -149,17 +175,25 @@ def _evaluate_embeddings(args: argparse.Namespace) -> None:
         output_dir = RESULTS_ROOT / args.task / args.model_name
 
     if args.task == "chirality":
-        from three_dbench.benchmarks import evaluate_chirality_embeddings
+        from three_dbench.benchmarks.chirality import evaluate_chirality_embeddings, load_chirality_embeddings
 
-        embeddings = load_embeddings(args.embeddings, key=args.embedding_key)
-        evaluate_chirality_embeddings(
+        embeddings = load_chirality_embeddings(args.embeddings, key=args.embedding_key)
+        _, summary = evaluate_chirality_embeddings(
             dataset_dir=args.dataset_dir,
             embeddings=embeddings,
             output_dir=output_dir,
             model_name=args.model_name,
             per_mol_min_n=args.per_mol_min_n,
             do_unsup_when_single_en=args.do_unsup_when_single_en,
+            unsup_kmax=args.unsup_kmax,
             max_molecules=args.max_molecules,
+            distance=args.distance,
+            metric_version=args.metric_version,
+            n_jobs=args.n_jobs,
+        )
+        print(
+            "ES-AUC {ESA_AUC_mean:.6f}  NN@1-Acc {NN1_acc_mean:.6f}  Hopkins {hopkins_mean:.6f}  "
+            "SCI {sil_sup_mean:.6f}  SCI_unsup {sil_unsup_mean:.6f}".format(**summary)
         )
         print(f"Chirality report saved to {output_dir}")
         return
