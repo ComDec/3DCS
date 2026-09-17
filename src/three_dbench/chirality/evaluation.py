@@ -1,8 +1,30 @@
+"""Chirality (stereoisomer separation) metrics for 3DCS.
+
+The per-molecule protocol and every metric definition are documented in
+``docs/metrics/chirality.md``. Two switches control the definitions:
+
+``distance``
+    Representation distance used for continuous embeddings: ``"euclidean"`` (default; this is
+    what produced the published Table 2) or ``"cosine"``. RDKit fingerprints always use Tanimoto
+    distance, whatever ``distance`` is.
+
+``metric_version``
+    ``"paper"`` (default) reproduces the code path that produced the published numbers.
+    ``"v2"`` applies the corrected definitions listed in ``docs/metrics/chirality.md``
+    (tie-aware NN1 restricted to points with a same-class partner, centroid DBI, explicit Hopkins
+    population, best-k silhouette on the selected distance).
+
+Importing this module has no side effects (no directories are created, no files are read).
+"""
+
+import functools
 import itertools
 import json
 import os
 import pickle
 import re
+import sys
+import warnings
 from collections.abc import Sequence
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from dataclasses import dataclass
@@ -12,9 +34,6 @@ from typing import Any, Optional, Union
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
-
-from three_dbench.utils.paths import DATA_ROOT as GLOBAL_DATA_ROOT
-from three_dbench.utils.paths import RESULTS_ROOT as GLOBAL_RESULTS_ROOT
 
 # ===== RDKit fingerprint support =====
 try:
@@ -30,16 +49,24 @@ except Exception:
 # ===== Optional sklearn support (preferred when available) =====
 try:
     from sklearn.cluster import KMeans
-    from sklearn.metrics import davies_bouldin_score, pairwise_distances, roc_auc_score, silhouette_score
+    from sklearn.metrics import pairwise_distances, roc_auc_score, silhouette_score
 
     _HAS_SK = True
 except Exception:
     roc_auc_score = None
     silhouette_score = None
     KMeans = None
-    davies_bouldin_score = None
     pairwise_distances = None
     _HAS_SK = False
+
+_silhouette_score = silhouette_score
+
+DISTANCES = ("euclidean", "cosine")
+METRIC_VERSIONS = ("paper", "v2")
+#: Hopkins statistic is only computed for molecules with at least this many conformers.
+HOPKINS_MIN_N = 10
+#: Small constant added to between-cluster distances in the v2 Davies-Bouldin index (App. C.5).
+DBI_EPS = 1e-12
 
 
 # ===================== 1) Parse key: mol_id + en_id =====================
@@ -68,15 +95,18 @@ class FlatIndex:
     mol_labels: np.ndarray  # Global array of mol_ids
 
 
-def build_flat_index(key_to_mols: dict[str, list[Any]]) -> FlatIndex:
+def build_flat_index_from_counts(key_to_counts: dict[str, int]) -> FlatIndex:
+    """Build flat indices from a mapping of key to conformer counts (dataset row order)."""
     keys, counts, offsets = [], [], []
     mol_idx_map: dict[str, list[int]] = {}
     en_labels = []
     mol_labels = []
 
     cursor = 0
-    for k, mol_list in key_to_mols.items():
-        n = len(mol_list) if mol_list is not None else 0
+    for k, n in key_to_counts.items():
+        n = int(n)
+        if n < 0:
+            raise ValueError(f"Negative conformer count {n} for key {k!r}.")
         keys.append(k)
         counts.append(n)
         offsets.append(cursor)
@@ -97,33 +127,13 @@ def build_flat_index(key_to_mols: dict[str, list[Any]]) -> FlatIndex:
     return FlatIndex(keys, counts, offsets, mol_to_indices, en_labels, mol_labels)
 
 
-def build_flat_index_from_counts(key_to_counts: dict[str, int]) -> FlatIndex:
-    """Build flat indices from a mapping of key to conformer counts."""
-    keys, counts, offsets = [], [], []
-    mol_idx_map: dict[str, list[int]] = {}
-    en_labels = []
-    mol_labels = []
+def build_flat_index(key_to_mols: dict[str, list[Any]]) -> FlatIndex:
+    """Build flat indices from a mapping of key to conformer lists."""
+    return build_flat_index_from_counts(_counts_from_mols(key_to_mols))
 
-    cursor = 0
-    for k, n in key_to_counts.items():
-        keys.append(k)
-        counts.append(int(n))
-        offsets.append(cursor)
 
-        mol_id, en_id = parse_key_en(k)
-        if n > 0:
-            idxs = list(range(cursor, cursor + n))
-            mol_idx_map.setdefault(mol_id, []).extend(idxs)
-            en_labels.extend([en_id] * n)
-            mol_labels.extend([mol_id] * n)
-
-        cursor += n
-
-    en_labels = np.asarray(en_labels, dtype=object)
-    mol_labels = np.asarray(mol_labels, dtype=object)
-    mol_to_indices = {mol: np.asarray(ix, dtype=int) for mol, ix in mol_idx_map.items()}
-
-    return FlatIndex(keys, counts, offsets, mol_to_indices, en_labels, mol_labels)
+def _counts_from_mols(key_to_mols: dict[str, list[Any]]) -> dict[str, int]:
+    return {k: (len(v) if v is not None else 0) for k, v in key_to_mols.items()}
 
 
 # ===================== 3) Distance computation (continuous / fingerprint) =====================
@@ -195,10 +205,51 @@ def pairwise_distances_from_embeddings(
         return pairwise_distances(Z, metric=metric)
 
 
-def distance_matrix_for_subset(embeddings: Union[np.ndarray, Sequence[Any]], idxs: np.ndarray, mode: str) -> np.ndarray:
-    """Return the distance matrix for the selected subset."""
+def cosine_distances(X: np.ndarray) -> np.ndarray:
+    """Cosine distance ``1 - cos(z_i, z_j)`` in float64.
+
+    Rows are L2-normalised with a 1e-12 guard (``pairwise_distances_from_embeddings``) and the
+    diagonal is set to exactly 0, so that precomputed-distance routines such as
+    ``sklearn.metrics.silhouette_score`` accept the matrix.
+    """
+    D = pairwise_distances_from_embeddings(X, metric="cosine", normalize_cosine=True)
+    np.fill_diagonal(D, 0.0)
+    return D
+
+
+def l2_normalize_rows(X: np.ndarray) -> np.ndarray:
+    """Return ``X`` with unit-norm rows (1e-12 guard), keeping the input dtype."""
+    X = np.asarray(X)
+    nrm = np.linalg.norm(X, axis=1, keepdims=True) + 1e-12
+    return (X / nrm).astype(X.dtype, copy=False)
+
+
+def _check_distance(distance: str) -> None:
+    if distance not in DISTANCES:
+        raise ValueError(f"Unknown distance {distance!r}; expected one of {DISTANCES}.")
+
+
+def _check_metric_version(metric_version: str) -> None:
+    if metric_version not in METRIC_VERSIONS:
+        raise ValueError(f"Unknown metric_version {metric_version!r}; expected one of {METRIC_VERSIONS}.")
+
+
+def distance_matrix_for_subset(
+    embeddings: Union[np.ndarray, Sequence[Any]],
+    idxs: np.ndarray,
+    mode: str,
+    distance: str = "euclidean",
+) -> np.ndarray:
+    """Return the representation distance matrix Delta for the selected rows.
+
+    Continuous embeddings use ``distance`` (``"euclidean"`` or ``"cosine"``); fingerprints always
+    use Tanimoto distance.
+    """
     if mode == "continuous":
+        _check_distance(distance)
         X = embeddings[idxs]  # (n,d)
+        if distance == "cosine":
+            return cosine_distances(X)
         return euclidean_distances(X)
     elif mode == "fingerprint":
         fps = [embeddings[i] for i in idxs]
@@ -285,27 +336,46 @@ def _cluster_medoids_from_D(D: np.ndarray, y: np.ndarray) -> tuple[np.ndarray, n
     return np.asarray(medoids, dtype=int), np.asarray(S, dtype=float)
 
 
-def davies_bouldin_from_D(D: np.ndarray, y: np.ndarray, mode: str) -> float:
-    """Compute the Davies-Bouldin index, falling back to a medoid approximation."""
+def davies_bouldin_from_D(D: np.ndarray, y: np.ndarray, mode: str, eps: float = 0.0) -> float:
+    """Medoid approximation of the Davies-Bouldin index on a distance matrix.
+
+    This is the ``paper`` definition (the published code path; ``eps=0``). Cluster "centres" are
+    medoids of ``D`` and the scatter is the mean distance to the medoid.
+    """
     y = np.asarray(y)
     if len(np.unique(y)) < 2 or D.shape[0] < 3:
         return np.nan
-    if mode == "continuous" and _HAS_SK and davies_bouldin_score is not None:
-        # Requires features rather than distances; fall back to the medoid version to avoid extra deps
-        pass
-    # medoid-DBI
-    np.unique(y)
     medoids, S = _cluster_medoids_from_D(D, y)
     # Distances between medoids
     M = D[np.ix_(medoids, medoids)].copy()
     np.fill_diagonal(M, np.inf)
-    R = (S[:, None] + S[None, :]) / M
+    R = (S[:, None] + S[None, :]) / (M + eps)
     np.fill_diagonal(R, -np.inf)
     DBI = np.mean(np.max(R, axis=1))
     return float(DBI)
 
 
+def davies_bouldin_centroid(X: np.ndarray, y: np.ndarray, eps: float = DBI_EPS) -> float:
+    """Davies-Bouldin index with Euclidean centroids, as written in App. C.5 (``v2``).
+
+    ``S_i`` is the mean Euclidean distance of the members of class ``i`` to its centroid ``mu_i``,
+    ``M_ij = ||mu_i - mu_j||`` and ``R_ij = (S_i + S_j) / (M_ij + eps)``.
+    """
+    y = np.asarray(y)
+    labels = np.unique(y)
+    if labels.size < 2 or X.shape[0] < 3:
+        return np.nan
+    X = np.asarray(X, dtype=np.float64)
+    cents = np.stack([X[y == c].mean(axis=0) for c in labels])
+    S = np.array([np.linalg.norm(X[y == c] - cents[i], axis=1).mean() for i, c in enumerate(labels)])
+    M = np.linalg.norm(cents[:, None, :] - cents[None, :, :], axis=2)
+    R = (S[:, None] + S[None, :]) / (M + eps)
+    np.fill_diagonal(R, -np.inf)
+    return float(np.mean(np.max(R, axis=1)))
+
+
 def nn1_leave_one_out_from_D(D: np.ndarray, y: np.ndarray) -> float:
+    """Leave-one-out 1-NN accuracy (``paper``): ties go to the lowest row index (``np.argmin``)."""
     n = D.shape[0]
     if n < 2 or len(np.unique(y)) < 2:
         return np.nan
@@ -314,6 +384,30 @@ def nn1_leave_one_out_from_D(D: np.ndarray, y: np.ndarray) -> float:
     nn = np.argmin(D2, axis=1)
     pred = np.asarray(y)[nn]
     return float(np.mean(pred == y))
+
+
+def nn1_leave_one_out_v2(D: np.ndarray, y: np.ndarray) -> float:
+    """Tie-aware leave-one-out 1-NN accuracy over points that have a same-class partner (``v2``).
+
+    For each point ``i`` whose class has at least one other member, the score is the fraction of
+    its exactly-tied nearest neighbours (``j != i``) that share its label, i.e. the expected
+    accuracy under uniformly random tie-breaking. Points whose class has no other member cannot be
+    classified correctly by construction and are excluded. Returns NaN when no point is eligible.
+    """
+    y = np.asarray(y)
+    n = D.shape[0]
+    if n < 2 or np.unique(y).size < 2:
+        return np.nan
+    same = y[:, None] == y[None, :]
+    np.fill_diagonal(same, False)
+    eligible = same.any(axis=1)
+    if not eligible.any():
+        return np.nan
+    D2 = np.array(D, dtype=np.float64, copy=True)
+    np.fill_diagonal(D2, np.inf)
+    tied = D2 == D2.min(axis=1, keepdims=True)
+    hits = (tied & same).sum(axis=1) / tied.sum(axis=1)
+    return float(np.mean(hits[eligible]))
 
 
 def boundary_clarity_from_D(D: np.ndarray, y: np.ndarray, q_intra: float = 0.90, q_inter: float = 0.10) -> float:
@@ -348,9 +442,14 @@ def boundary_clarity_from_D(D: np.ndarray, y: np.ndarray, q_intra: float = 0.90,
 
 # ===================== 5) Unsupervised clustering (KMeans / K-medoids) =====================
 def hopkins_statistic(X: np.ndarray, m: Optional[int] = None, rng: Optional[np.random.Generator] = None) -> float:
+    """Hopkins statistic on raw vectors (Euclidean); NaN when ``n < HOPKINS_MIN_N``.
+
+    ``m = max(10, int(0.1 n))`` uniform points are drawn in the bounding box of ``X`` and ``m`` data
+    points are sampled without replacement (``default_rng(0)`` unless ``rng`` is given).
+    """
     rng = rng or np.random.default_rng(0)
     n, d = X.shape
-    if n < 10:
+    if n < HOPKINS_MIN_N:
         return np.nan
     if m is None:
         m = max(10, int(0.1 * n))
@@ -390,7 +489,6 @@ def pam_kmedoids(
     for _ in range(max_iter):
         improved = False
         for m_idx in range(k):
-            medoids[m_idx]
             for cand in range(n):
                 if cand in medoids:
                     continue
@@ -408,26 +506,39 @@ def pam_kmedoids(
     return labels, medoids
 
 
-# Optional third-party clustering libraries
-try:
-    from sklearn_extra.cluster import KMedoids as _KMedoids
-except Exception:
-    _KMedoids = None
+@functools.cache
+def _kmedoids_class():
+    """Return ``sklearn_extra.cluster.KMedoids`` if importable (lazy; optional dependency)."""
+    try:
+        from sklearn_extra.cluster import KMedoids
 
-try:
-    from sklearn.cluster import AgglomerativeClustering as _AgglomerativeClustering
-except Exception:
-    _AgglomerativeClustering = None
+        return KMedoids
+    except Exception:
+        return None
 
-try:
-    from sklearn.cluster import KMeans
-    from sklearn.metrics import silhouette_score as _silhouette_score
 
-    _HAS_SK = True
-except Exception:
-    KMeans = None
-    _silhouette_score = None
-    _HAS_SK = False
+@functools.cache
+def _agglomerative_class():
+    try:
+        from sklearn.cluster import AgglomerativeClustering
+
+        return AgglomerativeClustering
+    except Exception:
+        return None
+
+
+def resolve_unsup_kmax(n: int, unsup_kmax: Optional[int]) -> int:
+    """Largest k scanned by the best-k silhouette for a molecule with ``n`` conformers.
+
+    ``None`` means ``n - 1`` (unbounded; the setting of the published run). An integer caps the scan
+    at ``min(unsup_kmax, n - 1)`` (the first public release hard-coded ``min(10, n - 1)``).
+    """
+    if unsup_kmax is None:
+        return n - 1
+    unsup_kmax = int(unsup_kmax)
+    if unsup_kmax < 2:
+        raise ValueError(f"unsup_kmax must be >= 2 or None, got {unsup_kmax}.")
+    return min(unsup_kmax, n - 1)
 
 
 def best_unsup_silhouette_from_D_or_X(
@@ -439,10 +550,13 @@ def best_unsup_silhouette_from_D_or_X(
     n_init: int = 10,
     random_state: int = 0,
     fp_backend: str = "kmedoids",  # {"kmedoids","agglomerative","custom"}
+    silhouette_on: str = "X",  # {"X","D"}; continuous mode only
 ) -> tuple[float, Optional[int], Optional[np.ndarray]]:
     """Unified unsupervised interface across continuous and fingerprint modes.
 
-    - ``mode == "continuous"``: run sklearn KMeans on ``X`` with Euclidean silhouette.
+    - ``mode == "continuous"``: run sklearn KMeans on ``X``. The silhouette is computed on ``X`` with
+      Euclidean distance (``silhouette_on="X"``, ``paper``) or on the precomputed ``D``
+      (``silhouette_on="D"``, ``v2``).
     - Otherwise, operate on the distance matrix ``D`` using the selected backend
       (``"kmedoids"``, ``"agglomerative"``, or ``"custom"``).
 
@@ -452,6 +566,10 @@ def best_unsup_silhouette_from_D_or_X(
     if mode == "continuous":
         if X is None or not _HAS_SK or KMeans is None or _silhouette_score is None:
             return np.nan, None, None
+        if silhouette_on not in ("X", "D"):
+            raise ValueError(f"silhouette_on must be 'X' or 'D', got {silhouette_on!r}")
+        if silhouette_on == "D" and D is None:
+            raise ValueError("silhouette_on='D' requires D")
         n = X.shape[0]
         if n <= kmin:
             return np.nan, None, None
@@ -459,9 +577,16 @@ def best_unsup_silhouette_from_D_or_X(
         best_s, best_k, best_lab = -1.0, None, None
         for k in range(kmin, max(kmin, kmax_eff) + 1):
             try:
-                km = KMeans(n_clusters=k, n_init=n_init, random_state=random_state)
-                lab = km.fit_predict(X)
-                s = _silhouette_score(X, lab, metric="euclidean")
+                with warnings.catch_warnings():
+                    # k close to n with duplicate rows: sklearn warns "Number of distinct clusters ... smaller
+                    # than n_clusters"; the fit result is unchanged, only the log noise is suppressed.
+                    warnings.filterwarnings("ignore", message="Number of distinct clusters")
+                    km = KMeans(n_clusters=k, n_init=n_init, random_state=random_state)
+                    lab = km.fit_predict(X)
+                if silhouette_on == "D":
+                    s = _silhouette_score(D, lab, metric="precomputed")
+                else:
+                    s = _silhouette_score(X, lab, metric="euclidean")
                 if s > best_s:
                     best_s, best_k, best_lab = s, k, lab
             except Exception:
@@ -491,10 +616,11 @@ def best_unsup_silhouette_from_D_or_X(
 
     # sklearn-extra KMedoids backend
     def _try_kmedoids(dist: np.ndarray, k: int) -> Optional[np.ndarray]:
-        if _KMedoids is None:
+        kmedoids_cls = _kmedoids_class()
+        if kmedoids_cls is None:
             return None
         try:
-            model = _KMedoids(
+            model = kmedoids_cls(
                 n_clusters=k,
                 metric="precomputed",
                 method="pam",
@@ -507,14 +633,15 @@ def best_unsup_silhouette_from_D_or_X(
 
     # sklearn Agglomerative backend (handles metric vs affinity kwarg changes)
     def _try_agglomerative(dist: np.ndarray, k: int) -> Optional[np.ndarray]:
-        if _AgglomerativeClustering is None:
+        agglo_cls = _agglomerative_class()
+        if agglo_cls is None:
             return None
         try:
             # Handle sklearn API differences: metric="precomputed" vs affinity="precomputed"
             try:
-                model = _AgglomerativeClustering(n_clusters=k, metric="precomputed", linkage="average")
+                model = agglo_cls(n_clusters=k, metric="precomputed", linkage="average")
             except TypeError:
-                model = _AgglomerativeClustering(n_clusters=k, affinity="precomputed", linkage="average")
+                model = agglo_cls(n_clusters=k, affinity="precomputed", linkage="average")
             lab = model.fit(dist).labels_
             return lab
         except Exception:
@@ -554,160 +681,141 @@ def best_unsup_silhouette_from_D_or_X(
 
 
 # ===================== 6) Evaluation interface (one row per molecule) =====================
-def evaluate_en_separation(
-    key_to_mols: dict[str, list[Any]],
-    embeddings: Union[np.ndarray, Sequence[Any]],
-    *,
-    per_mol_min_n: int = 2,
-    do_unsup_when_single_en: bool = False,  # Run unsupervised metrics even with a single en-class
-    unsup_kmax: int = 50,
-    max_molecules: Optional[int] = None,  # Limit number of molecules for quick testing
-):
-    """Evaluate embeddings per molecule and return detailed and summary metrics."""
-    flat = build_flat_index(key_to_mols)
-    N = sum(flat.counts)
+@dataclass(frozen=True)
+class ChiralitySettings:
+    """Per-molecule evaluation settings (see ``docs/metrics/chirality.md``)."""
 
-    # Auto-detect embedding mode
-    if isinstance(embeddings, np.ndarray):
-        mode = "continuous"
-        if embeddings.shape[0] != N:
-            raise ValueError(f"Embeddings count {embeddings.shape[0]} != total molecules {N}.")
-    elif is_fingerprint_list(embeddings):
-        mode = "fingerprint"
-        if len(embeddings) != N:
-            raise ValueError(f"Fingerprint list length {len(embeddings)} != total molecules {N}.")
-        if not _HAS_RDKIT:
-            raise RuntimeError("RDKit is required to compute Tanimoto distance.")
+    per_mol_min_n: int = 2
+    do_unsup_when_single_en: bool = False
+    unsup_kmax: Optional[int] = None
+    distance: str = "euclidean"
+    metric_version: str = "paper"
+
+    def validate(self) -> None:
+        _check_distance(self.distance)
+        _check_metric_version(self.metric_version)
+        if self.unsup_kmax is not None:
+            resolve_unsup_kmax(3, self.unsup_kmax)
+
+
+def _empty_row(mol_id: str, n: int, mode_tag: str, embedding_mode: str, n_en: int, hop: float = np.nan) -> dict:
+    return {
+        "mol_id": mol_id,
+        "n": int(n),
+        "mode": mode_tag,
+        "ESA_AUC": np.nan,
+        "NN1_acc": np.nan,
+        "sil_sup": np.nan,
+        "DBI": np.nan,
+        "clarity": np.nan,
+        "hopkins": hop,
+        "sil_unsup": np.nan,
+        "k_unsup": np.nan,
+        "clarity_unsup": np.nan,
+        "n_en_classes": n_en,
+        "embedding_mode": embedding_mode,
+    }
+
+
+def evaluate_molecule(
+    mol_id: str,
+    sub_embeddings: Union[np.ndarray, Sequence[Any]],
+    y_en: np.ndarray,
+    mode: str,
+    settings: ChiralitySettings,
+) -> dict:
+    """Compute all chirality metrics for one molecule.
+
+    ``sub_embeddings`` holds the rows of this molecule (array ``(n, d)`` or list of fingerprints)
+    and ``y_en`` their stereoisomer labels, in dataset order.
+    """
+    y_en = np.asarray(y_en, dtype=object)
+    n = int(len(y_en))
+    v2 = settings.metric_version == "v2"
+    if n < settings.per_mol_min_n:
+        return _empty_row(mol_id, n, "skip_small", mode, n_en=0)
+
+    all_idx = np.arange(n)
+    D = distance_matrix_for_subset(sub_embeddings, all_idx, mode, distance=settings.distance)
+    n_en = int(np.unique(y_en).size)
+
+    if mode == "continuous":
+        X_raw = sub_embeddings
+        # v2: clustering / Hopkins geometry follows the selected distance (unit sphere for cosine)
+        X_sub = l2_normalize_rows(X_raw) if (v2 and settings.distance == "cosine") else X_raw
+        hop = hopkins_statistic(X_sub)
     else:
-        raise ValueError("Unrecognised embeddings: provide np.ndarray vectors or RDKit fingerprints.")
+        X_raw = None
+        X_sub = None
+        hop = np.nan
 
-    rows = []
+    fp_backend_single = "custom" if v2 else "kmedoids"
+    silhouette_on = "D" if v2 else "X"
 
-    cur_idx = 0
-
-    mol_items = list(flat.mol_to_indices.items())
-    if max_molecules is not None:
-        mol_items = mol_items[:max_molecules]
-        print(f"Quick test mode: processing only {len(mol_items)} molecules (out of {len(flat.mol_to_indices)})")
-
-    for mol_id, idxs in tqdm(mol_items):
-        n = idxs.size
-        if n < per_mol_min_n:
-            rows.append(
-                {
-                    "mol_id": mol_id,
-                    "n": int(n),
-                    "mode": "skip_small",
-                    "ESA_AUC": np.nan,
-                    "NN1_acc": np.nan,
-                    "sil_sup": np.nan,
-                    "DBI": np.nan,
-                    "clarity": np.nan,
-                    "hopkins": np.nan,
-                    "sil_unsup": np.nan,
-                    "k_unsup": np.nan,
-                    "clarity_unsup": np.nan,
-                    "n_en_classes": 0,
-                    "embedding_mode": mode,
-                }
-            )
-            continue
-
-        # Subset distance matrix
-        D = distance_matrix_for_subset(embeddings, idxs, mode)
-        y_en = flat.en_labels[idxs]
-        n_en = int(np.unique(y_en).size)
-
-        # Hopkins statistic only applies in continuous mode; fingerprints return NaN
-        if mode == "continuous":
-            X_sub = embeddings[idxs]  # for KMeans/Hopkins
-            hop = hopkins_statistic(X_sub)
-        else:
-            X_sub = None
-            hop = np.nan
-
-        # Supervised metrics (requires n_en >= 2)
-        if n_en >= 2:
-            auc = auc_diff_pairs_large_when_different(D, y_en)
-            nn1 = nn1_leave_one_out_from_D(D, y_en)
-            sils = silhouette_with_labels_from_D(D, y_en)
-            dbi = davies_bouldin_from_D(D, y_en, mode=mode)
-            clar = boundary_clarity_from_D(D, y_en)
-
-            # Optional unsupervised metrics even when supervised metrics are available
-            # Limit kmax to 10 for speed (most molecules have < 10 enantiomers anyway)
-            kmax_unsup = min(10, D.shape[0] - 1)
-            silu, k_star, lab_star = best_unsup_silhouette_from_D_or_X(
-                mode=mode, D=D, X=X_sub, kmin=2, kmax=kmax_unsup, fp_backend="custom"
-            )
-            clar_unsup = boundary_clarity_from_D(D, lab_star) if lab_star is not None else np.nan
-
-            rows.append(
-                {
-                    "mol_id": mol_id,
-                    "n": int(n),
-                    "mode": "supervised+unsup",
-                    "ESA_AUC": auc,
-                    "NN1_acc": nn1,
-                    "sil_sup": sils,
-                    "DBI": dbi,
-                    "clarity": clar,
-                    "hopkins": hop,
-                    "sil_unsup": silu,
-                    "k_unsup": (np.nan if k_star is None else int(k_star)),
-                    "clarity_unsup": clar_unsup,
-                    "n_en_classes": n_en,
-                    "embedding_mode": mode,
-                }
-            )
-
-        else:
-            # Default: skip entirely when there is only one en-class
-            if not do_unsup_when_single_en:
-                rows.append(
-                    {
-                        "mol_id": mol_id,
-                        "n": int(n),
-                        "mode": "skip_single_en",
-                        "ESA_AUC": np.nan,
-                        "NN1_acc": np.nan,
-                        "sil_sup": np.nan,
-                        "DBI": np.nan,
-                        "clarity": np.nan,
-                        "hopkins": hop,
-                        "sil_unsup": np.nan,
-                        "k_unsup": np.nan,
-                        "clarity_unsup": np.nan,
-                        "n_en_classes": n_en,
-                        "embedding_mode": mode,
-                    }
-                )
+    if n_en >= 2:
+        auc = auc_diff_pairs_large_when_different(D, y_en)
+        sils = silhouette_with_labels_from_D(D, y_en)
+        clar = boundary_clarity_from_D(D, y_en)
+        if v2:
+            nn1 = nn1_leave_one_out_v2(D, y_en)
+            has_pair = bool(np.any(np.unique(y_en, return_counts=True)[1] >= 2))
+            if not has_pair:
+                dbi = np.nan
+            elif mode == "continuous":
+                dbi = davies_bouldin_centroid(X_sub, y_en)
             else:
-                silu, k_star, lab_star = best_unsup_silhouette_from_D_or_X(
-                    mode=mode, D=D, X=X_sub, kmin=2, kmax=unsup_kmax
-                )
-                clar_unsup = boundary_clarity_from_D(D, lab_star) if lab_star is not None else np.nan
-                rows.append(
-                    {
-                        "mol_id": mol_id,
-                        "n": int(n),
-                        "mode": "unsupervised_only",
-                        "ESA_AUC": np.nan,
-                        "NN1_acc": np.nan,
-                        "sil_sup": np.nan,
-                        "DBI": np.nan,
-                        "clarity": np.nan,
-                        "hopkins": hop,
-                        "sil_unsup": silu,
-                        "k_unsup": (np.nan if k_star is None else int(k_star)),
-                        "clarity_unsup": clar_unsup,
-                        "n_en_classes": n_en,
-                        "embedding_mode": mode,
-                    }
-                )
-        cur_idx += 1
+                dbi = davies_bouldin_from_D(D, y_en, mode=mode, eps=DBI_EPS)
+        else:
+            nn1 = nn1_leave_one_out_from_D(D, y_en)
+            dbi = davies_bouldin_from_D(D, y_en, mode=mode)
 
-    # Aggregate macro-average across molecules
+        kmax_unsup = resolve_unsup_kmax(n, settings.unsup_kmax)
+        silu, k_star, lab_star = best_unsup_silhouette_from_D_or_X(
+            mode=mode, D=D, X=X_sub, kmin=2, kmax=kmax_unsup, fp_backend="custom", silhouette_on=silhouette_on
+        )
+        clar_unsup = boundary_clarity_from_D(D, lab_star) if lab_star is not None else np.nan
+
+        return {
+            "mol_id": mol_id,
+            "n": int(n),
+            "mode": "supervised+unsup",
+            "ESA_AUC": auc,
+            "NN1_acc": nn1,
+            "sil_sup": sils,
+            "DBI": dbi,
+            "clarity": clar,
+            "hopkins": hop,
+            "sil_unsup": silu,
+            "k_unsup": (np.nan if k_star is None else int(k_star)),
+            "clarity_unsup": clar_unsup,
+            "n_en_classes": n_en,
+            "embedding_mode": mode,
+        }
+
+    # Only one stereoisomer class present.
+    if not settings.do_unsup_when_single_en:
+        # v2: Hopkins is reported on the same molecule population as the supervised metrics.
+        return _empty_row(mol_id, n, "skip_single_en", mode, n_en=n_en, hop=(np.nan if v2 else hop))
+
+    kmax_unsup = resolve_unsup_kmax(n, settings.unsup_kmax)
+    silu, k_star, lab_star = best_unsup_silhouette_from_D_or_X(
+        mode=mode, D=D, X=X_sub, kmin=2, kmax=kmax_unsup, fp_backend=fp_backend_single, silhouette_on=silhouette_on
+    )
+    clar_unsup = boundary_clarity_from_D(D, lab_star) if lab_star is not None else np.nan
+    row = _empty_row(mol_id, n, "unsupervised_only", mode, n_en=n_en, hop=hop)
+    row.update(
+        {
+            "sil_unsup": silu,
+            "k_unsup": (np.nan if k_star is None else int(k_star)),
+            "clarity_unsup": clar_unsup,
+        }
+    )
+    return row
+
+
+def summarize_rows(rows: list[dict]) -> dict:
+    """Macro-average per-molecule rows (NaNs are skipped) into the summary dict."""
+
     def _agg_mean(xs):
         a = np.asarray(xs, float)
         a = a[np.isfinite(a)]
@@ -718,38 +826,159 @@ def evaluate_en_separation(
         a = a[np.isfinite(a)]
         return float(np.median(a)) if a.size else np.nan
 
-    ESA = [r["ESA_AUC"] for r in rows]
-    NN1 = [r["NN1_acc"] for r in rows]
-    SIL = [r["sil_sup"] for r in rows]
-    DBI = [r["DBI"] for r in rows]
-    CLR = [r["clarity"] for r in rows]
-    HOP = [r["hopkins"] for r in rows]
-    SUS = [r["sil_unsup"] for r in rows]
-    KUS = [r["k_unsup"] for r in rows]
-    CUS = [r["clarity_unsup"] for r in rows]
+    def col(name):
+        return [r[name] for r in rows]
 
-    summary = {
-        "ESA_AUC_mean": _agg_mean(ESA),
-        "ESA_AUC_median": _agg_med(ESA),
-        "NN1_acc_mean": _agg_mean(NN1),
-        "NN1_acc_median": _agg_med(NN1),
-        "sil_sup_mean": _agg_mean(SIL),
-        "sil_sup_median": _agg_med(SIL),
-        "DBI_mean": _agg_mean(DBI),
-        "DBI_median": _agg_med(DBI),
-        "clarity_mean": _agg_mean(CLR),
-        "clarity_median": _agg_med(CLR),
-        "hopkins_mean": _agg_mean(HOP),
-        "hopkins_median": _agg_med(HOP),
-        "sil_unsup_mean": _agg_mean(SUS),
-        "sil_unsup_median": _agg_med(SUS),
-        "k_unsup_median": _agg_med(KUS),
-        "clarity_unsup_mean": _agg_mean(CUS),
-        "clarity_unsup_median": _agg_med(CUS),
+    return {
+        "ESA_AUC_mean": _agg_mean(col("ESA_AUC")),
+        "ESA_AUC_median": _agg_med(col("ESA_AUC")),
+        "NN1_acc_mean": _agg_mean(col("NN1_acc")),
+        "NN1_acc_median": _agg_med(col("NN1_acc")),
+        "sil_sup_mean": _agg_mean(col("sil_sup")),
+        "sil_sup_median": _agg_med(col("sil_sup")),
+        "DBI_mean": _agg_mean(col("DBI")),
+        "DBI_median": _agg_med(col("DBI")),
+        "clarity_mean": _agg_mean(col("clarity")),
+        "clarity_median": _agg_med(col("clarity")),
+        "hopkins_mean": _agg_mean(col("hopkins")),
+        "hopkins_median": _agg_med(col("hopkins")),
+        "sil_unsup_mean": _agg_mean(col("sil_unsup")),
+        "sil_unsup_median": _agg_med(col("sil_unsup")),
+        "k_unsup_median": _agg_med(col("k_unsup")),
+        "clarity_unsup_mean": _agg_mean(col("clarity_unsup")),
+        "clarity_unsup_median": _agg_med(col("clarity_unsup")),
         "n_molecules": len(rows),
     }
 
-    return rows, summary
+
+def coverage_from_rows(rows: list[dict]) -> dict:
+    """Number of molecules that contribute a finite value to each summary metric."""
+
+    def n_finite(name):
+        return int(np.isfinite(np.asarray([r[name] for r in rows], dtype=float)).sum())
+
+    modes = [r["mode"] for r in rows]
+    return {
+        "n_molecules": len(rows),
+        "n_supervised": modes.count("supervised+unsup"),
+        "n_skip_small": modes.count("skip_small"),
+        "n_skip_single_en": modes.count("skip_single_en"),
+        "n_unsupervised_only": modes.count("unsupervised_only"),
+        **{f"n_finite_{k}": n_finite(k) for k in ("ESA_AUC", "NN1_acc", "sil_sup", "DBI", "hopkins", "sil_unsup")},
+    }
+
+
+def _detect_mode(embeddings: Union[np.ndarray, Sequence[Any]], n_total: int, n_keys: int) -> str:
+    """Validate the embedding container against the dataset and return ``continuous``/``fingerprint``."""
+    if isinstance(embeddings, np.ndarray):
+        if embeddings.ndim != 2:
+            raise ValueError(
+                f"Continuous embeddings must be a 2-D array (n_conformers, dim); got shape {embeddings.shape}."
+            )
+        if embeddings.shape[0] != n_total:
+            raise ValueError(
+                f"Embedding rows ({embeddings.shape[0]}) != total conformers in the dataset ({n_total} = sum of "
+                f"n_conformers over {n_keys} keys). Embeddings must have exactly one row per conformer, in dataset "
+                "row order (see the dataset 'offset' column)."
+            )
+        if not np.issubdtype(embeddings.dtype, np.number):
+            raise ValueError(f"Embeddings must be numeric; got dtype {embeddings.dtype}.")
+        n_bad = int((~np.isfinite(embeddings)).any(axis=1).sum())
+        if n_bad:
+            raise ValueError(
+                f"Embeddings contain NaN/Inf in {n_bad} rows; the chirality metrics require finite values."
+            )
+        return "continuous"
+    if is_fingerprint_list(embeddings):
+        if len(embeddings) != n_total:
+            raise ValueError(
+                f"Fingerprint list length ({len(embeddings)}) != total conformers in the dataset ({n_total} = sum "
+                f"of n_conformers over {n_keys} keys). Fingerprints must be one per conformer, in dataset row order."
+            )
+        if not _HAS_RDKIT:
+            raise RuntimeError("RDKit is required to compute Tanimoto distance.")
+        return "fingerprint"
+    raise ValueError(
+        "Unrecognised embeddings: provide a 2-D numpy array (one row per conformer) or a list of RDKit "
+        f"fingerprints (e.g. ExplicitBitVect); got {type(embeddings).__name__}."
+    )
+
+
+def _take_rows(embeddings: Union[np.ndarray, Sequence[Any]], idxs: np.ndarray, mode: str):
+    if mode == "continuous":
+        return embeddings[idxs]
+    return [embeddings[i] for i in idxs]
+
+
+# ---- process-pool helpers (module-level so that they can be pickled) ----
+_WORKER: dict = {}
+
+
+def _worker_setup(embeddings, en_labels, mode, settings, threads_per_worker):
+    _WORKER.update(embeddings=embeddings, en_labels=en_labels, mode=mode, settings=settings)
+    if threads_per_worker:
+        try:
+            from threadpoolctl import threadpool_limits
+
+            _WORKER["_limits"] = threadpool_limits(limits=int(threads_per_worker))
+        except Exception:
+            pass
+
+
+def _worker_run(batch):
+    emb, labels, mode, settings = _WORKER["embeddings"], _WORKER["en_labels"], _WORKER["mode"], _WORKER["settings"]
+    out = []
+    for pos, mol_id, idxs in batch:
+        out.append((pos, evaluate_molecule(mol_id, _take_rows(emb, idxs, mode), labels[idxs], mode, settings)))
+    return out
+
+
+def _run_molecules(
+    tasks: list[tuple[str, np.ndarray]],
+    embeddings,
+    en_labels: np.ndarray,
+    mode: str,
+    settings: ChiralitySettings,
+    n_jobs: int,
+    progress: bool,
+) -> list[dict]:
+    if n_jobs is None or n_jobs == 0:
+        n_jobs = 1
+    if n_jobs < 0:
+        n_jobs = os.cpu_count() or 1
+    n_jobs = int(min(n_jobs, max(1, len(tasks))))
+
+    if n_jobs == 1:
+        it = tqdm(tasks, disable=not progress, desc="molecules")
+        return [
+            evaluate_molecule(mol_id, _take_rows(embeddings, idxs, mode), en_labels[idxs], mode, settings)
+            for mol_id, idxs in it
+        ]
+
+    # Every molecule is evaluated independently with its own fixed seeds, so the split into
+    # batches does not change any per-molecule value. Large molecules are spread round-robin.
+    order = sorted(range(len(tasks)), key=lambda i: -int(tasks[i][1].size))
+    n_batches = min(len(tasks), n_jobs * 8)
+    batches: list[list] = [[] for _ in range(n_batches)]
+    for j, i in enumerate(order):
+        mol_id, idxs = tasks[i]
+        batches[j % n_batches].append((i, mol_id, idxs))
+
+    import multiprocessing as mp
+
+    ctx = mp.get_context("fork" if sys.platform.startswith("linux") else "spawn")
+    rows: list[Optional[dict]] = [None] * len(tasks)
+    with ProcessPoolExecutor(
+        max_workers=n_jobs,
+        mp_context=ctx,
+        initializer=_worker_setup,
+        initargs=(embeddings, en_labels, mode, settings, 1),
+    ) as ex:
+        futs = [ex.submit(_worker_run, b) for b in batches]
+        for fut in tqdm(as_completed(futs), total=len(futs), disable=not progress, desc="batches"):
+            for pos, row in fut.result():
+                rows[pos] = row
+    return rows  # type: ignore[return-value]
 
 
 def evaluate_en_separation_from_counts(
@@ -758,209 +987,111 @@ def evaluate_en_separation_from_counts(
     *,
     per_mol_min_n: int = 2,
     do_unsup_when_single_en: bool = False,
-    unsup_kmax: int = 50,
+    unsup_kmax: Optional[int] = None,
     max_molecules: Optional[int] = None,
+    distance: str = "euclidean",
+    metric_version: str = "paper",
+    n_jobs: int = 1,
+    progress: bool = False,
 ):
-    """Evaluate embeddings using only conformer counts per key."""
+    """Evaluate embeddings per molecule using only conformer counts per key.
+
+    Args:
+        key_to_counts: ordered mapping ``key -> n_conformers`` in dataset row order.
+        embeddings: ``(sum(n_conformers), dim)`` array or list of RDKit fingerprints, dataset order.
+        per_mol_min_n: molecules with fewer conformers are skipped.
+        do_unsup_when_single_en: also run the best-k silhouette for single-stereoisomer molecules.
+        unsup_kmax: largest k for the best-k silhouette; ``None`` = ``n - 1`` (published setting).
+        max_molecules: evaluate only the first N molecules (quick tests).
+        distance: ``"euclidean"`` (published Table 2) or ``"cosine"``; ignored for fingerprints.
+        metric_version: ``"paper"`` (published definitions) or ``"v2"`` (corrected definitions).
+        n_jobs: worker processes (``-1`` = all CPUs). Results do not depend on ``n_jobs``.
+        progress: show a tqdm progress bar.
+
+    Returns:
+        ``(rows, summary)``: one dict per molecule and the macro-averaged summary.
+    """
+    settings = ChiralitySettings(
+        per_mol_min_n=per_mol_min_n,
+        do_unsup_when_single_en=do_unsup_when_single_en,
+        unsup_kmax=unsup_kmax,
+        distance=distance,
+        metric_version=metric_version,
+    )
+    settings.validate()
+
     flat = build_flat_index_from_counts(key_to_counts)
-    N = sum(flat.counts)
+    n_total = sum(flat.counts)
+    mode = _detect_mode(embeddings, n_total, len(flat.keys))
 
-    if isinstance(embeddings, np.ndarray):
-        mode = "continuous"
-        if embeddings.shape[0] != N:
-            raise ValueError(f"Embeddings count {embeddings.shape[0]} != total molecules {N}.")
-    elif is_fingerprint_list(embeddings):
-        mode = "fingerprint"
-        if len(embeddings) != N:
-            raise ValueError(f"Fingerprint list length {len(embeddings)} != total molecules {N}.")
-        if not _HAS_RDKIT:
-            raise RuntimeError("RDKit is required to compute Tanimoto distance.")
-    else:
-        raise ValueError("Unrecognised embeddings: provide np.ndarray vectors or RDKit fingerprints.")
-
-    rows = []
     mol_items = list(flat.mol_to_indices.items())
     if max_molecules is not None:
         mol_items = mol_items[:max_molecules]
         print(f"Quick test mode: processing only {len(mol_items)} molecules (out of {len(flat.mol_to_indices)})")
 
-    for mol_id, idxs in mol_items:
-        n = idxs.size
-        if n < per_mol_min_n:
-            rows.append(
-                {
-                    "mol_id": mol_id,
-                    "n": int(n),
-                    "mode": "skip_small",
-                    "ESA_AUC": np.nan,
-                    "NN1_acc": np.nan,
-                    "sil_sup": np.nan,
-                    "DBI": np.nan,
-                    "clarity": np.nan,
-                    "hopkins": np.nan,
-                    "sil_unsup": np.nan,
-                    "k_unsup": np.nan,
-                    "clarity_unsup": np.nan,
-                    "n_en_classes": 0,
-                    "embedding_mode": mode,
-                }
-            )
-            continue
-
-        D = distance_matrix_for_subset(embeddings, idxs, mode)
-        y_en = flat.en_labels[idxs]
-        n_en = int(np.unique(y_en).size)
-
-        if mode == "continuous":
-            X_sub = embeddings[idxs]
-            hop = hopkins_statistic(X_sub)
-        else:
-            X_sub = None
-            hop = np.nan
-
-        if n_en >= 2:
-            auc = auc_diff_pairs_large_when_different(D, y_en)
-            nn1 = nn1_leave_one_out_from_D(D, y_en)
-            sils = silhouette_with_labels_from_D(D, y_en)
-            dbi = davies_bouldin_from_D(D, y_en, mode=mode)
-            clar = boundary_clarity_from_D(D, y_en)
-
-            kmax_unsup = min(10, D.shape[0] - 1)
-            silu, k_star, lab_star = best_unsup_silhouette_from_D_or_X(
-                mode=mode, D=D, X=X_sub, kmin=2, kmax=kmax_unsup, fp_backend="custom"
-            )
-            clar_unsup = boundary_clarity_from_D(D, lab_star) if lab_star is not None else np.nan
-
-            rows.append(
-                {
-                    "mol_id": mol_id,
-                    "n": int(n),
-                    "mode": "supervised+unsup",
-                    "ESA_AUC": auc,
-                    "NN1_acc": nn1,
-                    "sil_sup": sils,
-                    "DBI": dbi,
-                    "clarity": clar,
-                    "hopkins": hop,
-                    "sil_unsup": silu,
-                    "k_unsup": (np.nan if k_star is None else int(k_star)),
-                    "clarity_unsup": clar_unsup,
-                    "n_en_classes": n_en,
-                    "embedding_mode": mode,
-                }
-            )
-        else:
-            if not do_unsup_when_single_en:
-                rows.append(
-                    {
-                        "mol_id": mol_id,
-                        "n": int(n),
-                        "mode": "skip_single_en",
-                        "ESA_AUC": np.nan,
-                        "NN1_acc": np.nan,
-                        "sil_sup": np.nan,
-                        "DBI": np.nan,
-                        "clarity": np.nan,
-                        "hopkins": hop,
-                        "sil_unsup": np.nan,
-                        "k_unsup": np.nan,
-                        "clarity_unsup": np.nan,
-                        "n_en_classes": n_en,
-                        "embedding_mode": mode,
-                    }
-                )
-            else:
-                silu, k_star, lab_star = best_unsup_silhouette_from_D_or_X(
-                    mode=mode, D=D, X=X_sub, kmin=2, kmax=unsup_kmax
-                )
-                clar_unsup = boundary_clarity_from_D(D, lab_star) if lab_star is not None else np.nan
-                rows.append(
-                    {
-                        "mol_id": mol_id,
-                        "n": int(n),
-                        "mode": "unsupervised_only",
-                        "ESA_AUC": np.nan,
-                        "NN1_acc": np.nan,
-                        "sil_sup": np.nan,
-                        "DBI": np.nan,
-                        "clarity": np.nan,
-                        "hopkins": hop,
-                        "sil_unsup": silu,
-                        "k_unsup": (np.nan if k_star is None else int(k_star)),
-                        "clarity_unsup": clar_unsup,
-                        "n_en_classes": n_en,
-                        "embedding_mode": mode,
-                    }
-                )
-
-    def _agg_mean(xs):
-        a = np.asarray(xs, float)
-        a = a[np.isfinite(a)]
-        return float(a.mean()) if a.size else np.nan
-
-    def _agg_med(xs):
-        a = np.asarray(xs, float)
-        a = a[np.isfinite(a)]
-        return float(np.median(a)) if a.size else np.nan
-
-    ESA = [r["ESA_AUC"] for r in rows]
-    NN1 = [r["NN1_acc"] for r in rows]
-    SIL = [r["sil_sup"] for r in rows]
-    DBI = [r["DBI"] for r in rows]
-    CLR = [r["clarity"] for r in rows]
-    HOP = [r["hopkins"] for r in rows]
-    SUS = [r["sil_unsup"] for r in rows]
-    KUS = [r["k_unsup"] for r in rows]
-    CUS = [r["clarity_unsup"] for r in rows]
-
-    summary = {
-        "ESA_AUC_mean": _agg_mean(ESA),
-        "ESA_AUC_median": _agg_med(ESA),
-        "NN1_acc_mean": _agg_mean(NN1),
-        "NN1_acc_median": _agg_med(NN1),
-        "sil_sup_mean": _agg_mean(SIL),
-        "sil_sup_median": _agg_med(SIL),
-        "DBI_mean": _agg_mean(DBI),
-        "DBI_median": _agg_med(DBI),
-        "clarity_mean": _agg_mean(CLR),
-        "clarity_median": _agg_med(CLR),
-        "hopkins_mean": _agg_mean(HOP),
-        "hopkins_median": _agg_med(HOP),
-        "sil_unsup_mean": _agg_mean(SUS),
-        "sil_unsup_median": _agg_med(SUS),
-        "k_unsup_median": _agg_med(KUS),
-        "clarity_unsup_mean": _agg_mean(CUS),
-        "clarity_unsup_median": _agg_med(CUS),
-        "n_molecules": len(rows),
-    }
-
-    return rows, summary
+    rows = _run_molecules(mol_items, embeddings, flat.en_labels, mode, settings, n_jobs, progress)
+    return rows, summarize_rows(rows)
 
 
-# ========= Configuration =========
-DATA_ROOT = GLOBAL_DATA_ROOT / "chirality"
-RESULT_ROOT = GLOBAL_RESULTS_ROOT / "chirality"
-BASE_DICT_PKL = DATA_ROOT / "chirality_bench_conformers_noised_only.pkl"
-OUT_DIR = RESULT_ROOT / "en_sep_results"  # Output directory (per-model JSON + summary CSV)
+def evaluate_en_separation(
+    key_to_mols: dict[str, list[Any]],
+    embeddings: Union[np.ndarray, Sequence[Any]],
+    *,
+    per_mol_min_n: int = 2,
+    do_unsup_when_single_en: bool = False,  # Run unsupervised metrics even with a single en-class
+    unsup_kmax: Optional[int] = None,
+    max_molecules: Optional[int] = None,  # Limit number of molecules for quick testing
+    distance: str = "euclidean",
+    metric_version: str = "paper",
+    n_jobs: int = 1,
+    progress: bool = True,
+):
+    """Evaluate embeddings per molecule from a ``key -> [Mol]`` mapping (see the ``_from_counts`` variant)."""
+    return evaluate_en_separation_from_counts(
+        _counts_from_mols(key_to_mols),
+        embeddings,
+        per_mol_min_n=per_mol_min_n,
+        do_unsup_when_single_en=do_unsup_when_single_en,
+        unsup_kmax=unsup_kmax,
+        max_molecules=max_molecules,
+        distance=distance,
+        metric_version=metric_version,
+        n_jobs=n_jobs,
+        progress=progress,
+    )
+
+
+# ========= Legacy driver (authors' original data/ layout; not used by the CLI) =========
 N_WORKERS = min(6, os.cpu_count() or 2)
 
-# Model definitions and loader settings (name, path, loader_type, key)
-MODEL_SPECS = [
-    ("molspectra", str(DATA_ROOT / "molspectra" / "sampled_mol_feature.npz"), "npz", "arr_0"),
-    ("unimol", str(DATA_ROOT / "unimol" / "1.npz"), "npz", "arr_0"),
-    ("gemnet", str(DATA_ROOT / "gemnet" / "sampled_feature.npz"), "npz", "gemnet"),
-    ("molae", str(DATA_ROOT / "molae" / "1.npz"), "npz", "arr_0"),
-    ("e3fp", str(DATA_ROOT / "fingerprint" / "sampled_chi.pkl"), "pkl_dict", "e3fp"),
-]
 
-# ========= Existing evaluation function =========
-# Assumes ``evaluate_en_separation`` is imported and available.
+def _legacy_paths() -> tuple[Path, Path]:
+    from three_dbench.utils.paths import DATA_ROOT, RESULTS_ROOT
+
+    return DATA_ROOT / "chirality", RESULTS_ROOT / "chirality" / "en_sep_results"
+
+
+def legacy_model_specs(data_root: Optional[Path] = None) -> list[tuple[str, str, str, str]]:
+    """(name, path, loader, key) of the published Table 2 inputs in the original ``data/chirality`` layout."""
+    root = Path(data_root) if data_root is not None else _legacy_paths()[0]
+    return [
+        ("molspectra", str(root / "molspectra" / "sampled_mol_feature.npz"), "npz", "arr_0"),
+        ("unimol", str(root / "unimol" / "1.npz"), "npz", "arr_0"),
+        ("gemnet", str(root / "gemnet" / "sampled_feature.npz"), "npz", "gemnet"),
+        ("molae", str(root / "molae" / "1.npz"), "npz", "arr_0"),
+        ("e3fp", str(root / "fingerprint" / "sampled_chi.pkl"), "pkl_dict", "e3fp"),
+        ("fmg", str(root / "fmg" / "chirality_bench_conformers_noised_only_aslist_embed.npz"), "npz", "embeddings"),
+        ("mace", str(root / "mace" / "chirality.npz"), "npz", "arr_0"),
+    ]
+
 
 BASE_DICT = None  # Read-only cache shared by worker processes
 
 
 def _worker_init(base_dict_pkl: str):
     """Load the base dictionary once per worker to avoid repeated large IPC transfers."""
+    if rdBase is None:
+        raise RuntimeError("RDKit is required to load chirality conformer pickles.")
     if rdBase.rdkitVersion < "2023.09":
         raise RuntimeError(
             "RDKit >= 2023.09 is required to load chirality conformer pickles. "
@@ -976,19 +1107,26 @@ def _load_array(path: str, loader: str, key: str):
         with np.load(path) as data:
             return data[key]
     elif loader == "pkl_dict":
-        d = pickle.load(open(path, "rb"))
+        with open(path, "rb") as f:
+            d = pickle.load(f)
         return d[key]
     else:
         raise ValueError(f"Unknown loader: {loader}")
 
 
 def _run_one(
-    model_name: str, path: str, loader: str, key: str, max_molecules: Optional[int] = None
+    model_name: str,
+    path: str,
+    loader: str,
+    key: str,
+    max_molecules: Optional[int] = None,
+    eval_kwargs: Optional[dict] = None,
 ) -> tuple[str, dict[str, Any], dict[str, Any]]:
     """Evaluate a single model and return ``(model_name, result_dict, summary_dict)``."""
     arr = _load_array(path, loader, key)
-    # Delegate to the user-provided evaluation function
-    result, summary = evaluate_en_separation(BASE_DICT, arr, max_molecules=max_molecules)
+    result, summary = evaluate_en_separation(
+        BASE_DICT, arr, max_molecules=max_molecules, progress=False, **(eval_kwargs or {})
+    )
     return model_name, result, summary
 
 
@@ -999,13 +1137,15 @@ def run_chirality_benchmark(
     output_dir: Optional[Path] = None,
     model_specs: Optional[list[tuple[str, str, str, str]]] = None,
     max_molecules: Optional[int] = None,  # Quick test: limit number of molecules
+    **eval_kwargs,
 ) -> None:
-    """Execute the chirality benchmark with optional overrides."""
+    """Execute the chirality benchmark over several models from the original pickle layout."""
+    data_root, default_out = _legacy_paths()
     workers = max_workers or N_WORKERS
-    base_path = str(base_dict_path or BASE_DICT_PKL)
-    out_dir = output_dir or OUT_DIR
+    base_path = str(base_dict_path or (data_root / "chirality_bench_conformers_noised_only.pkl"))
+    out_dir = output_dir or default_out
     out_dir.mkdir(parents=True, exist_ok=True)
-    specs = model_specs or MODEL_SPECS
+    specs = model_specs or legacy_model_specs(data_root)
 
     summaries = {}  # model_name -> summary dict (shared keys)
     json_paths = []  # Paths of written result JSON files
@@ -1013,7 +1153,7 @@ def run_chirality_benchmark(
     # Submit jobs in parallel
     with ProcessPoolExecutor(max_workers=workers, initializer=_worker_init, initargs=(base_path,)) as ex:
         futs = {
-            ex.submit(_run_one, name, path, loader, key, max_molecules): (name, path)
+            ex.submit(_run_one, name, path, loader, key, max_molecules, eval_kwargs): (name, path)
             for (name, path, loader, key) in specs
         }
 
@@ -1037,7 +1177,6 @@ def run_chirality_benchmark(
 
     # Aggregate summary -> CSV
     if summaries:
-        # Use any summary's key order for columns (keys are shared)
         any_summary = next(iter(summaries.values()))
         cols = list(any_summary.keys())
 
@@ -1045,7 +1184,6 @@ def run_chirality_benchmark(
         csv_path = out_dir / "summary.csv"
         df.to_csv(csv_path, index_label="model")
 
-        # Short report to stdout
         print(f"\nDone. JSON files: {len(json_paths)} written to {out_dir}")
         print(f"Summary CSV: {csv_path}")
     else:
