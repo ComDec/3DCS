@@ -49,3 +49,6 @@ examples/.demo_cache/
 
 # Claude Code local settings
 .claude/
+
+# Reproduction script outputs
+reproduce/*/out/
