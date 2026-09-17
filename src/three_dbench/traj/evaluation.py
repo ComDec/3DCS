@@ -59,12 +59,11 @@ def condensed_index(i: int, j: int, n: int) -> int:
 
 
 def _pair_indices_from_n(n: int) -> tuple[np.ndarray, np.ndarray]:
-    ii, jj = [], []
-    for i in range(n - 1):
-        j0 = i + 1
-        ii.extend([i] * (n - j0))
-        jj.extend(range(j0, n))
-    return np.asarray(ii, int), np.asarray(jj, int)
+    """Row-major upper-triangle indices ``(i, j)`` with ``i < j`` (condensed order)."""
+    if n < 2:
+        return np.zeros(0, dtype=int), np.zeros(0, dtype=int)
+    ii, jj = np.triu_indices(n, 1)
+    return ii.astype(int, copy=False), jj.astype(int, copy=False)
 
 
 def expand_condensed_to_square(
@@ -403,29 +402,14 @@ def vector_to_absdiff_condensed(x: np.ndarray, dtype=np.float32) -> np.ndarray:
     n = x.size
     if n < 2:
         return np.array([], dtype=dtype)
-    i_idx = []
-    j_idx = []
-    for i in range(n - 1):
-        j0 = i + 1
-        cnt = n - j0
-        i_idx.extend([i] * cnt)
-        j_idx.extend(range(j0, n))
-    i_idx = np.asarray(i_idx, dtype=np.int64)
-    j_idx = np.asarray(j_idx, dtype=np.int64)
+    i_idx, j_idx = _pair_indices_from_n(n)
     v = np.abs(x[i_idx] - x[j_idx]).astype(dtype, copy=False)
     return v
 
 
 def energy_diff_condensed(E: np.ndarray) -> np.ndarray:
     E = np.asarray(E, float).reshape(-1)
-    n = E.size
-    ii, jj = [], []
-    for i in range(n - 1):
-        j0 = i + 1
-        ii.extend([i] * (n - j0))
-        jj.extend(range(j0, n))
-    ii = np.asarray(ii, int)
-    jj = np.asarray(jj, int)
+    ii, jj = _pair_indices_from_n(E.size)
     return np.abs(E[ii] - E[jj])
 
 
@@ -662,18 +646,21 @@ def ejs_auc_halfnormal(
 
 
 def _condensed_fetch_pairs(Delta_cond: ArrayLike, pairs: tuple[np.ndarray, np.ndarray]) -> np.ndarray:
+    """Fetch ``Delta[i, j]`` for index pairs from a condensed vector (0 on the diagonal)."""
     Delta_cond = np.asarray(Delta_cond, float)
     n = n_from_condensed_len(Delta_cond.shape[0])
-    ii, jj = pairs
-    vals = np.empty(ii.shape[0], dtype=np.float64)
-    for k, (i, j) in enumerate(zip(ii, jj)):
-        if i == j:
-            vals[k] = 0.0
-        else:
-            if i > j:
-                i, j = j, i
-            idx = condensed_index(i, j, n)
-            vals[k] = Delta_cond[idx]
+    ii = np.asarray(pairs[0], dtype=np.int64).reshape(-1)
+    jj = np.asarray(pairs[1], dtype=np.int64).reshape(-1)
+    lo = np.minimum(ii, jj)
+    hi = np.maximum(ii, jj)
+    off = lo != hi
+    vals = np.zeros(ii.shape[0], dtype=np.float64)
+    if np.any(off):
+        lo_o, hi_o = lo[off], hi[off]
+        if np.any(lo_o < 0) or np.any(hi_o >= n):
+            raise IndexError(f"Pair index out of range for n={n}")
+        idx = n * lo_o - (lo_o * (lo_o + 1)) // 2 + (hi_o - lo_o - 1)
+        vals[off] = Delta_cond[idx]
     return vals
 
 
