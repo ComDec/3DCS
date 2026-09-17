@@ -5,7 +5,7 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-from three_dbench.embeddings import load_embeddings, load_embeddings_dict, load_embeddings_dir
+from three_dbench.embeddings import load_embeddings, load_embeddings_dict
 from three_dbench.utils.paths import DATA_ROOT, RESULTS_ROOT
 
 
@@ -57,7 +57,8 @@ def _parse_args() -> argparse.Namespace:
         type=str,
         choices=["paper", "v2"],
         default="paper",
-        help="Metric definitions: 'paper' reproduces the published numbers, 'v2' follows the paper text",
+        help="All tasks: 'paper' reproduces the published numbers (default), 'v2' uses the corrected "
+        "definitions documented in docs/METRICS.md",
     )
     evaluate.add_argument("--lie-k", type=int, default=None, help="Rotation: override k of LIE@k")
     evaluate.add_argument(
@@ -80,12 +81,37 @@ def _parse_args() -> argparse.Namespace:
         action="store_true",
         help="Rotation (by-shard): also report metrics with the embedding-cursor drift of the published full run",
     )
-    evaluate.add_argument("--n-jobs", type=int, default=1, help="Number of worker processes")
+    evaluate.add_argument("--n-jobs", type=int, default=1, help="All tasks: worker processes (-1 = all CPUs)")
     evaluate.add_argument("--n-samples", type=int, default=100, help="Trajectory samples per molecule")
     evaluate.add_argument("--window", type=int, default=2000, help="Trajectory window size")
-    evaluate.add_argument("--metric-embed", type=str, default="cosine", help="Trajectory distance metric")
+    evaluate.add_argument(
+        "--metric-embed",
+        type=str,
+        choices=["cosine", "euclidean", "tanimoto"],
+        default=None,
+        help="Trajectory distance (default: tanimoto for fingerprint pickles, cosine for vectors)",
+    )
     evaluate.add_argument("--block-size", type=int, default=4096, help="Trajectory distance block size")
     evaluate.add_argument("--random-seed", type=int, default=2025, help="Trajectory random seed")
+    evaluate.add_argument(
+        "--window-scheme",
+        choices=["legacy", "shared"],
+        default="legacy",
+        help="Trajectory windows: legacy = per-molecule reseeding as in the paper (default); shared = 0.1.0 CLI",
+    )
+    evaluate.add_argument("--molecules", type=str, nargs="*", default=None, help="Trajectory molecule subset")
+    evaluate.add_argument(
+        "--energy-precision-check",
+        choices=["error", "warn", "ignore"],
+        default="error",
+        help="Action when trajectory energies look quantized (e.g. float32-cast)",
+    )
+    evaluate.add_argument(
+        "--time-ordered", action="store_true", help="Trajectory frames are time-ordered (v2 TS/Smoothness)"
+    )
+    evaluate.add_argument(
+        "--legacy-traj-len", type=int, default=100_000, help="Trajectory length assumed by the legacy window scheme"
+    )
     evaluate.add_argument("--per-mol-min-n", type=int, default=2, help="Chirality minimum conformers per molecule")
     evaluate.add_argument("--max-molecules", type=int, default=None, help="Chirality max molecules for testing")
     evaluate.add_argument("--do-unsup-when-single-en", action="store_true", help="Chirality unsupervised metrics")
@@ -241,11 +267,9 @@ def _evaluate_embeddings(args: argparse.Namespace) -> None:
 
     if args.task == "traj":
         from three_dbench.benchmarks import evaluate_trajectory_embeddings
+        from three_dbench.traj.io import load_traj_embeddings
 
-        if args.embeddings.is_dir():
-            emb_dict = load_embeddings_dir(args.embeddings, file_glob="rmd17_*.npz", key=args.embedding_key)
-        else:
-            emb_dict = load_embeddings_dict(args.embeddings, key=args.embedding_key)
+        emb_dict = load_traj_embeddings(args.embeddings, key=args.embedding_key)
         evaluate_trajectory_embeddings(
             dataset_dir=args.dataset_dir,
             embeddings_by_mol=emb_dict,
@@ -256,6 +280,13 @@ def _evaluate_embeddings(args: argparse.Namespace) -> None:
             metric_embed=args.metric_embed,
             block_size=args.block_size,
             random_seed=args.random_seed,
+            window_scheme=args.window_scheme,
+            metric_version=args.metric_version,
+            n_jobs=args.n_jobs,
+            molecules=args.molecules,
+            energy_precision_check=args.energy_precision_check,
+            time_ordered=args.time_ordered,
+            legacy_traj_len=args.legacy_traj_len,
         )
         print(f"Trajectory report saved to {output_dir}")
         return
