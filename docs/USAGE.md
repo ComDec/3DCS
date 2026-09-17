@@ -53,8 +53,6 @@ python -m three_dbench evaluate chirality \
 
 Options (see [metrics/chirality.md](metrics/chirality.md)):
 
-<!-- TODO(integrator): check these chirality options against the merged CLI (fix/chirality branch). -->
-
 | Option | Default | Meaning |
 |---|---|---|
 | `--distance {euclidean,cosine}` | `euclidean` | distance for continuous embeddings; `euclidean` reproduces Table 2. Fingerprints always use Tanimoto. |
@@ -62,7 +60,8 @@ Options (see [metrics/chirality.md](metrics/chirality.md)):
 | `--unsup-kmax` | `n-1` | largest k for the best-k silhouette |
 | `--per-mol-min-n` | 2 | minimum conformers per molecule |
 | `--max-molecules` | all | evaluate the first N molecules (testing) |
-| `--n-jobs` | 1 | worker processes |
+| `--do-unsup-when-single-en` | off | also compute the unsupervised metrics for parents with a single stereoisomer |
+| `--n-jobs` | 1 | worker processes (`-1` = all CPUs) |
 
 Outputs: `<model>_per_molecule.json`, `summary.csv`.
 
@@ -80,8 +79,6 @@ molecule, or a single `.npz`/`.pkl` dict keyed by molecule.
 
 Options (see [metrics/energy.md](metrics/energy.md)):
 
-<!-- TODO(integrator): check these trajectory options against the merged CLI (fix/energy branch). -->
-
 | Option | Default | Meaning |
 |---|---|---|
 | `--window-scheme {legacy,shared}` | `legacy` | window sampling; `legacy` reproduces the published runs |
@@ -90,7 +87,10 @@ Options (see [metrics/energy.md](metrics/energy.md)):
 | `--metric-version {paper,v2}` | `paper` | metric definitions |
 | `--molecules` | all | subset of rMD17 molecules |
 | `--energy-precision-check {error,warn,ignore}` | `error` | action when the energies look float32-quantized |
-| `--n-jobs` | 1 | worker processes |
+| `--time-ordered` | off | treat the frames as a time series (enables the `v2` TS / smoothness metrics; rMD17 frames are not ordered) |
+| `--legacy-traj-len` | 100000 | trajectory length assumed by the `legacy` window scheme |
+| `--block-size` | 4096 | block size of the pairwise distance computation |
+| `--n-jobs` | 1 | worker processes (`-1` = all CPUs) |
 
 Outputs: `details.csv`, `summary.csv`, `config.json`.
 

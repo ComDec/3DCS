@@ -2,8 +2,17 @@
 
 from __future__ import annotations
 
+import sys
+from pathlib import Path
+
 import numpy as np
 import pytest
+
+# `tests/test_demo.py` imports `examples.demo`, which lives in the checkout, not in the installed
+# package. Make it importable regardless of the working directory pytest is started from.
+_REPO_ROOT = Path(__file__).resolve().parent.parent
+if str(_REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(_REPO_ROOT))
 
 
 @pytest.fixture
