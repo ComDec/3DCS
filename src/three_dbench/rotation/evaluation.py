@@ -1,10 +1,14 @@
-"""Rotation geometry evaluation with optional shard sampling and batching.
+"""Rotation geometry evaluation helpers and the legacy LMDB-based driver.
 
-Highlights:
-- Sample-level control via SAMPLE_RATIO_SAMPLES / SAMPLE_MAX_SAMPLES / SAMPLE_SEED.
-- Non-sampled entries only advance offsets without cutting embeddings.
-- Ensures cosine distances are handled vector-wise and fixes the MOLAE directory path.
-- Aggregates shard outputs into gzipped JSON summaries.
+The CLI / Python API entry point is :func:`three_dbench.benchmarks.rotation.evaluate_rotation_embeddings`,
+which uses the versioned metric definitions in :mod:`three_dbench.rotation.metrics`.
+
+This module keeps:
+- RMSD and distance helpers (``rmsd_matrix_from_one_mol``, ``pairwise_distances_from_*``);
+- ``compute_all_geometry_metrics``: the metric set of the initial release (``metric_version="legacy"``);
+- ``main`` / ``process_shard``: the legacy driver that reads the authors' LMDB layout. Its defaults
+  (10 % sample with seed ``12345 + shard``) are **not** the settings of the published runs; see
+  ``docs/metrics/geometry.md``.
 """
 
 import gzip
@@ -15,7 +19,6 @@ import time
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from typing import Optional
 
-import lmdb
 import numpy as np
 from numpy.linalg import norm
 from rdkit import Chem, DataStructs
@@ -238,8 +241,7 @@ LMDB_DEG_DIR = SOURCE_ROOT / "sources"
 UNIMOL_DIR = SOURCE_ROOT / "unimol"
 MOLAE_DIR = SOURCE_ROOT / "molae"
 MOLSPEC_DIR = SOURCE_ROOT / "molspectra"
-OUT_DIR = RESULT_ROOT / "metrics_dict"
-OUT_DIR.mkdir(parents=True, exist_ok=True)
+OUT_DIR = RESULT_ROOT / "metrics_dict"  # created by main(), not at import time
 
 REPORT_SEC = 5.0
 METRICS = ("cosine", "euclidean")  # Use ("cosine",) to reduce runtime if needed
@@ -282,6 +284,7 @@ def process_shard(
     sample_seed: int = SAMPLE_SEED,
 ):
     _pin_threads_single()
+    import lmdb  # imported lazily: only the legacy LMDB driver needs it
 
     lmdb_fp_with_source_path = LMDB_FP_WITH_SOURCE_DIR / f"rot_{i}.lmdb"
     lmdb_deg_path = LMDB_DEG_DIR / f"rot_conf_deg_{i}.lmdb"
@@ -431,6 +434,7 @@ def main(max_workers: Optional[int] = None):
             done += 1
             print(f"[main] shard {done}/{len(shards)} merged | elapsed {time.time() - t0:.1f}s", flush=True)
 
+    OUT_DIR.mkdir(parents=True, exist_ok=True)
     out_path = OUT_DIR / "metrics_all_shards.json.gz"
     with gzip.open(out_path, "wt", encoding="utf-8") as f:
         json.dump(combined, f, ensure_ascii=False, separators=(",", ":"))
