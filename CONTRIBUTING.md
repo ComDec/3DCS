@@ -14,11 +14,9 @@ cd 3DCS
 python -m venv .venv
 source .venv/bin/activate
 
-# Install in editable mode with dev dependencies
+# Install in editable mode with dev dependencies (RDKit comes from the `rdkit` package on PyPI;
+# do not install `rdkit-pypi`)
 pip install -e ".[dev]"
-
-# Install RDKit (required for molecule parsing)
-pip install rdkit-pypi
 
 # Install pre-commit hooks
 pre-commit install
@@ -37,19 +35,21 @@ pytest --cov=three_dbench
 pytest -m "not slow"
 ```
 
+CI runs `pytest -m "not slow"` on Python 3.9, 3.10, 3.11 and 3.12.
+
 ## Code Style
 
 This project uses [ruff](https://docs.astral.sh/ruff/) for linting and formatting.
 
 ```bash
-# Check for issues
-ruff check src/ tests/
+# Check for issues (the same paths as CI and `make lint`)
+ruff check src/ tests/ examples/ reproduce/
 
 # Auto-fix issues
-ruff check --fix src/ tests/
+ruff check --fix src/ tests/ examples/ reproduce/
 
 # Format code
-ruff format src/ tests/
+ruff format src/ tests/ examples/ reproduce/
 ```
 
 Key style rules:
@@ -65,6 +65,8 @@ Key style rules:
 4. Add a benchmark entry point in `src/three_dbench/benchmarks/my_task.py`
 5. Register the task in `src/three_dbench/__main__.py`
 6. Add tests under `tests/`
+7. Document the metric definitions under `docs/metrics/` and, if the task reproduces a paper table,
+   add `reproduce/<table>/` with `run.sh` and `expected.csv` (see `reproduce/README.md`)
 
 ## Submitting Changes
 

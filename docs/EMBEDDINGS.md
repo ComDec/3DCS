@@ -1,119 +1,98 @@
-# Embedding Generation Guide
+# Embeddings
 
-This guide explains what inputs 3DCS provides and what embedding formats are accepted.
+This page describes (1) the embedding formats the evaluators accept and (2) the published baseline
+embeddings in [`EscheWang/3dcs-embeddings`](https://huggingface.co/datasets/EscheWang/3dcs-embeddings).
 
-## Overview
+## 1. Inputs provided by 3DCS
 
-3DCS evaluates embeddings that represent 3D molecular conformations. For each task, the
-dataset contains RDKit MolBlocks with 3D coordinates. Your workflow is:
+Each dataset row stores RDKit MolBlocks with 3D coordinates (`three_dbench.datasets.serialization.mol_from_block`).
 
-1. Load the HF dataset for a task
-2. Reconstruct RDKit molecules from MolBlocks
-3. Call your model to produce a fixed-length vector per conformer
-4. Save the embeddings in one of the supported formats
+| Config | Row | Conformer order |
+|---|---|---|
+| `chirality` | one stereoisomer of a parent molecule: `key`, `mol_id`, `en_id`, `n_conformers`, `offset`, `mol_blocks` | `offset` is a global index (rows in dataset order) |
+| `rotation` | one molecule: `key`, `shard`, `n_conformers`, `offset`, `mol_blocks`, `torsion_deg` | `offset` restarts at 0 in every shard; shards appear in string order `0, 1, 10, …, 15, 2, …, 9` |
+| `traj_frames` | one rMD17 frame: `mol_type`, `frame_idx`, `mol_block` | `frame_idx` = row of the rMD17 `.npz` |
+| `traj_energies` | one molecule: `mol_type`, `n_frames`, `energies` (kcal/mol) | aligned with `frame_idx` |
 
-The embedding dimension must be fixed for a given model.
+## 2. Accepted formats
 
-## Inputs provided by 3DCS
+- **NPZ**: `np.savez(path, arr_0=embeddings)` or any key; pass `--embedding-key`. Without a key the
+  loader tries `arr_0`, `embeddings`, `gemnet`, `mol_feature`, then the first numeric array (string
+  side-arrays such as FMG's `smiles` are skipped).
+- **NPY**: `np.save(path, embeddings)` (memory-mapped for the rotation by-shard layout).
+- **PKL**: a list of RDKit `ExplicitBitVect` (fingerprints, Tanimoto distance) or a dict; without a key
+  the entries `e3fp`, `embeddings`, `arr_0` are tried.
+- A directory holding exactly one embedding file can be passed instead of the file.
 
-- Chirality dataset rows contain: `key`, `mol_id`, `en_id`, `n_conformers`, `offset`, `mol_blocks`
-- Rotation dataset rows contain: `key`, `shard`, `n_conformers`, `offset`, `mol_blocks`, `torsion_deg`
-- Trajectory frames dataset rows contain: `mol_type`, `frame_idx`, `mol_block`
-- Trajectory energies dataset rows contain: `mol_type`, `n_frames`, `energies`
+| Task | Layout | Shape |
+|---|---|---|
+| Chirality | flat, dataset row order | `(52391, dim)` or a list of 52,391 fingerprints |
+| Trajectory | directory with `rmd17_<molecule>.npz` (or `.pkl` fingerprints), or a dict `{mol_type: array}` | `(n_frames, dim)` per molecule |
+| Rotation | `--layout by-shard`: directory with one file per shard (`rotation_conformers_{shard}.npz`, or `--shard-file-pattern`), rows in per-shard offset order | `(conformers in shard, dim)` |
+| Rotation | `--layout flat`: one array in dataset row order | `(10097643, dim)` |
+| Rotation | `--layout by-key`: dict `{key: array}` in `.npz`/`.pkl` | `(n_conformers, dim)` per key |
 
-MolBlocks include 3D coordinates. Use `three_dbench.datasets.serialization.mol_from_block`
-to rebuild RDKit Mol objects.
-
-## Supported embedding formats
-
-### Common formats
-
-- NPZ: `np.savez(path, arr_0=embeddings)` or `np.savez(path, embeddings=embeddings)`
-- NPY: `np.save(path, embeddings)`
-- PKL: `pickle.dump(embeddings, f)` or a dict `{key: embeddings}`
-
-### Chirality
-
-- **Flat array** (default): shape `(total_conformers, dim)` aligned with dataset order
-- **Fingerprint list**: a list of RDKit fingerprints aligned with dataset order
-
-Alignment is determined by `offset` and `n_conformers` in the HF dataset rows.
-
-### Rotation
-
-- **Flat array** (default): shape `(total_conformers, dim)` aligned with dataset order
-- **By key dict**: `{key: np.ndarray of shape (n_conformers, dim)}`
-- **Fingerprint list**: supported for flat layout
-
-### Trajectory
-
-- **Directory of NPZ files**: one file per molecule (e.g. `rmd17_aspirin.npz`)
-- **Dict**: `{mol_type: np.ndarray of shape (n_frames, dim)}`
-
-## Example: chirality embedding generation
+Generating embeddings for the rotation dataset shard by shard keeps the per-shard layout:
 
 ```python
-from pathlib import Path
-import numpy as np
-from datasets import load_from_disk
-from three_dbench.datasets.serialization import mol_from_block
-
-ds = load_from_disk("data/hf/chirality")
-
-vectors = []
-for row in ds:
-    mols = [mol_from_block(b, sanitize=False) for b in row["mol_blocks"]]
-    # Replace this with your model call
-    for mol in mols:
-        vec = np.random.randn(256).astype(np.float32)
-        vectors.append(vec)
-
-embeddings = np.stack(vectors, axis=0)
-np.savez("my_model_chirality.npz", arr_0=embeddings)
-```
-
-## Example: rotation embedding generation (by key)
-
-```python
-from pathlib import Path
 import numpy as np
 from datasets import load_from_disk
 from three_dbench.datasets.serialization import mol_from_block
 
 ds = load_from_disk("data/hf/rotation")
-out = {}
-for row in ds:
-    mols = [mol_from_block(b, sanitize=False) for b in row["mol_blocks"]]
-    vecs = [np.random.randn(256).astype(np.float32) for _ in mols]
-    out[row["key"]] = np.stack(vecs, axis=0)
-
-import pickle
-with open("my_rotation_by_key.pkl", "wb") as f:
-    pickle.dump(out, f)
+for shard in range(16):
+    part = ds.filter(lambda s: s == shard, input_columns=["shard"]).sort("offset")
+    vectors = []
+    for row in part:
+        for block in row["mol_blocks"]:
+            vectors.append(your_model(mol_from_block(block)))  # shape (dim,)
+    np.savez(f"embeddings/my_model/rotation_conformers_{shard}.npz", arr_0=np.stack(vectors))
 ```
 
-## Example: trajectory embedding generation (per molecule)
+Check alignment before evaluating: for flat arrays the number of rows must equal the sum of
+`n_conformers`; for by-shard files, each file must have `max(offset + n_conformers)` rows of its shard.
 
-```python
-import numpy as np
-from datasets import load_from_disk
-from three_dbench.datasets.serialization import mol_from_block
+## 3. Published baseline embeddings
 
-frames = load_from_disk("data/hf/traj/frames")
-mol_types = sorted(set(frames["mol_type"]))
+`python -m three_dbench download embeddings --task {chirality,traj,rotation,chirality_legacy_15218} [--models ...] [--results]`
+downloads files listed in the repository's `manifest.csv` to `data/embeddings/<path>` and checks
+their SHA-256. The files keep their original bytes and array keys; only directory names were
+normalised. `three_dbench.embeddings.published_embedding(task, model)` returns the path, key and
+layout of each entry.
 
-for mol_type in mol_types:
-    rows = frames.filter(lambda x: x["mol_type"] == mol_type)
-    vecs = []
-    for row in rows:
-        mol = mol_from_block(row["mol_block"], sanitize=False)
-        vecs.append(np.random.randn(256).astype(np.float32))
-    embeddings = np.stack(vecs, axis=0)
-    np.savez(f"embeddings/{mol_type}.npz", arr_0=embeddings)
-```
+| Path | Key | Shape | Used for |
+|---|---|---|---|
+| `chirality/e3fp/sampled_chi.pkl` | dict entry `e3fp` (also `morgan`) | 52,391 RDKit bit vectors (1024 bits) | Table 2 |
+| `chirality/gemnet/sampled_feature.npz` | `gemnet` | (52391, 128) float32 | Table 2 |
+| `chirality/molae/1.npz` | `arr_0` | (52391, 512) | Table 2 |
+| `chirality/molspectra/sampled_mol_feature.npz` | `arr_0` | (52391, 256) | Table 2 |
+| `chirality/unimol/1.npz` | `arr_0` | (52391, 512) | Table 2 |
+| `chirality/fmg/chirality_bench_conformers_noised_only_aslist_embed.npz` | `embeddings` (+ `smiles`) | (52391, 128) | Table 2 |
+| `chirality/mace/chirality.npz` | `arr_0` | (52391, 256) | Table 2 |
+| `chirality_legacy_15218/…` | see manifest | 15,218 conformers | earlier chirality set (Table 4) |
+| `traj/<model>/rmd17_<molecule>.npz` (`.pkl` for E3FP) | `gemnet` (GemNet), `embeddings` (FMG), `arr_0` (others); E3FP: pickled list | (100000, dim); azobenzene 99,988 | Tables 3, 6, 7 |
+| `rotation/gemnet/rotation_conformers_{0..15}.npz` | `gemnet` | (conformers in shard, 128) | Table 1 |
+| `rotation/fmg/rot_mol_list_0_embed.npz`, `rotation/mace/rot0.npz` | `embeddings` / `arr_0` | shard 0 only | not used in the paper |
+| `results/chirality/`, `results/traj/`, `results/rotation/` | – | original metric outputs | reference values |
 
-## Tips
+Rotation embeddings for E3FP, UniMol, MolAE and MolSpectra are not available. For those models the
+per-molecule metric outputs of the original runs (`results/rotation/metrics_all_0.1_1.json.gz`,
+`results/rotation/metrics_sup_100.json.gz`) are published instead.
 
-- Use float32 for most models. Float16 is acceptable for very large datasets.
-- Keep the embedding order identical to the dataset order.
-- For rotation, MolBlocks are required to compute RMSD; do not skip them during conversion.
+### Extraction status
+
+The extraction scripts used for the paper are not part of this repository. What is known about each
+set of embeddings:
+
+| Model | Dimension | Status | What is known |
+|---|---|---|---|
+| E3FP | 1024 bits | known | `e3fp` 1.2.7, `fprints_from_mol(mol, fprint_params=dict(bits=1024, level=5, radius_multiplier=1.5, stereo=True, include_disconnected=True, rdkit_invariants=True, first=1, counts=False))`, hydrogens kept. Recomputing from the original RDKit molecules reproduces 3,000/3,000 sampled chirality fingerprints; starting from the HF MolBlocks, about 5 % of fingerprints differ. |
+| GemNet (GemNet-Q) | 128 | partially known | A GemNet implementation in the authors' files returns 128-d molecule embeddings by averaging final-layer atom features, but it postdates the published embeddings and its use for these files is not confirmed. The GemNet-Q weights are not released. |
+| UniMol | 512 | unknown | Output format only. |
+| MolAE | 512 | unknown | Output format only. |
+| MolSpectra | 256 | unknown | Output format only. |
+| MACE | 256 | unknown | Output format only. |
+| FMG | 128 | unknown | Output format only (third-party model: Dumitrescu et al., ICLR 2025). |
+
+Embeddings produced with a re-implemented extractor may differ from these files; compare against the
+published files before using them to reproduce the tables.

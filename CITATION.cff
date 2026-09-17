@@ -1,0 +1,42 @@
+cff-version: 1.2.0
+message: "If you use 3DCS, please cite the ICLR 2026 paper."
+title: "3DCS: Datasets and Benchmark for Evaluating Conformational Sensitivity in Molecular Representations"
+type: software
+license: MIT
+repository-code: "https://github.com/ComDec/3DCS"
+url: "https://openreview.net/forum?id=JAb0y8lkqL"
+authors:
+  - family-names: Wang
+    given-names: Xi
+  - family-names: Zhang
+    given-names: Yang
+  - family-names: Zhang
+    given-names: Yingjia
+  - family-names: Cai
+    given-names: Yejia
+  - family-names: Wang
+    given-names: Shengjie
+keywords:
+  - molecular representation learning
+  - conformers
+  - chirality
+  - benchmark
+preferred-citation:
+  type: conference-paper
+  title: "3DCS: Datasets and Benchmark for Evaluating Conformational Sensitivity in Molecular Representations"
+  authors:
+    - family-names: Wang
+      given-names: Xi
+    - family-names: Zhang
+      given-names: Yang
+    - family-names: Zhang
+      given-names: Yingjia
+    - family-names: Cai
+      given-names: Yejia
+    - family-names: Wang
+      given-names: Shengjie
+  collection-title: "The Fourteenth International Conference on Learning Representations (ICLR 2026)"
+  conference:
+    name: "International Conference on Learning Representations (ICLR)"
+  year: 2026
+  url: "https://openreview.net/forum?id=JAb0y8lkqL"

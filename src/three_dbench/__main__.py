@@ -32,8 +32,55 @@ def _parse_args() -> argparse.Namespace:
     evaluate.add_argument("--output-dir", type=Path, default=None, help="Output directory")
     evaluate.add_argument("--metrics", type=str, nargs="*", default=None, help="Rotation distance metrics")
     evaluate.add_argument(
-        "--layout", type=str, choices=["flat", "by-key"], default="flat", help="Rotation embedding layout"
+        "--layout",
+        type=str,
+        choices=["flat", "by-shard", "by-key"],
+        default=None,
+        help="Rotation embedding layout (default: by-shard for a directory, flat for a file)",
     )
+    evaluate.add_argument(
+        "--offset-mode",
+        type=str,
+        choices=["auto", "per-shard", "global"],
+        default="auto",
+        help="Rotation: how the dataset 'offset' column is interpreted",
+    )
+    evaluate.add_argument("--shard-file-pattern", type=str, default=None, help="Rotation by-shard file pattern")
+    evaluate.add_argument("--shards", type=int, nargs="*", default=None, help="Rotation shard IDs to evaluate")
+    evaluate.add_argument("--molecule-list", type=Path, default=None, help="Rotation: file with one key per line")
+    evaluate.add_argument("--sample-ratio", type=float, default=None, help="Rotation: fraction of molecules per shard")
+    evaluate.add_argument("--sample-seed", type=int, default=2027, help="Rotation: seed for --sample-ratio")
+    evaluate.add_argument("--min-conformers", type=int, default=2, help="Rotation: skip molecules with fewer")
+    evaluate.add_argument("--max-keys", type=int, default=None, help="Rotation: evaluate at most N molecules")
+    evaluate.add_argument(
+        "--metric-version",
+        type=str,
+        choices=["paper", "v2"],
+        default="paper",
+        help="Metric definitions: 'paper' reproduces the published numbers, 'v2' follows the paper text",
+    )
+    evaluate.add_argument("--lie-k", type=int, default=None, help="Rotation: override k of LIE@k")
+    evaluate.add_argument(
+        "--lie-self",
+        type=str,
+        choices=["include", "exclude"],
+        default=None,
+        help="Rotation: include the conformer itself in its LIE neighbourhood",
+    )
+    evaluate.add_argument(
+        "--as-variant",
+        type=str,
+        default=None,
+        choices=["mean_delta_circular", "median_delta_circular", "median_halfdelta_circular", "median_dz_linear"],
+        help="Rotation: override the angular smoothness definition",
+    )
+    evaluate.add_argument("--extra-metrics", action="store_true", help="Rotation: also dCor, Mantel, stress, triplets")
+    evaluate.add_argument(
+        "--replicate-offset-drift",
+        action="store_true",
+        help="Rotation (by-shard): also report metrics with the embedding-cursor drift of the published full run",
+    )
+    evaluate.add_argument("--n-jobs", type=int, default=1, help="Number of worker processes")
     evaluate.add_argument("--n-samples", type=int, default=100, help="Trajectory samples per molecule")
     evaluate.add_argument("--window", type=int, default=2000, help="Trajectory window size")
     evaluate.add_argument("--metric-embed", type=str, default="cosine", help="Trajectory distance metric")
@@ -42,6 +89,23 @@ def _parse_args() -> argparse.Namespace:
     evaluate.add_argument("--per-mol-min-n", type=int, default=2, help="Chirality minimum conformers per molecule")
     evaluate.add_argument("--max-molecules", type=int, default=None, help="Chirality max molecules for testing")
     evaluate.add_argument("--do-unsup-when-single-en", action="store_true", help="Chirality unsupervised metrics")
+
+    download = subparsers.add_parser("download", help="Download datasets or published embeddings from Hugging Face")
+    download.add_argument("what", choices=["dataset", "embeddings"], help="What to download")
+    download.add_argument(
+        "--task",
+        required=True,
+        choices=["chirality", "traj", "rotation", "chirality_legacy_15218", "all"],
+        help="Benchmark task",
+    )
+    download.add_argument("--models", type=str, nargs="*", default=None, help="Embeddings: model directories")
+    download.add_argument("--out", type=Path, default=None, help="Output root (default: data/hf or data/embeddings)")
+    download.add_argument("--repo-id", type=str, default=None, help="Override the HF repo id")
+    download.add_argument("--revision", type=str, default=None, help="HF revision (branch, tag or commit)")
+    download.add_argument("--results", action="store_true", help="Embeddings: also fetch results/<task>/ files")
+    download.add_argument("--no-verify", action="store_true", help="Embeddings: skip SHA-256 verification")
+    download.add_argument("--dry-run", action="store_true", help="Embeddings: list files without downloading")
+    download.add_argument("--overwrite", action="store_true", help="Dataset: replace an existing save_to_disk dir")
     return parser.parse_args()
 
 
@@ -102,26 +166,42 @@ def _evaluate_embeddings(args: argparse.Namespace) -> None:
 
     if args.task == "rotation":
         from three_dbench.benchmarks import evaluate_rotation_embeddings
+        from three_dbench.benchmarks.rotation import ShardedEmbeddings
 
         metrics = args.metrics or ["cosine", "euclidean"]
-        if args.layout == "by-key":
+        layout = args.layout or ("by-shard" if args.embeddings.is_dir() else "flat")
+        common = {
+            "dataset_dir": args.dataset_dir,
+            "output_dir": output_dir,
+            "model_name": args.model_name,
+            "metrics": metrics,
+            "metric_version": args.metric_version,
+            "lie_k": args.lie_k,
+            "lie_include_self": None if args.lie_self is None else args.lie_self == "include",
+            "as_variant": args.as_variant,
+            "extra_metrics": True if args.extra_metrics else None,
+            "offset_mode": args.offset_mode,
+            "shards": args.shards,
+            "molecule_list": args.molecule_list,
+            "sample_ratio": args.sample_ratio,
+            "sample_seed": args.sample_seed,
+            "min_conformers": args.min_conformers,
+            "max_keys": args.max_keys,
+            "n_jobs": args.n_jobs,
+            "progress": True,
+            "replicate_offset_drift": args.replicate_offset_drift,
+        }
+        if layout == "by-key":
             emb_dict = load_embeddings_dict(args.embeddings, key=args.embedding_key)
-            evaluate_rotation_embeddings(
-                dataset_dir=args.dataset_dir,
-                embeddings_by_key=emb_dict,
-                output_dir=output_dir,
-                model_name=args.model_name,
-                metrics=metrics,
+            evaluate_rotation_embeddings(embeddings_by_key=emb_dict, **common)
+        elif layout == "by-shard":
+            sharded = ShardedEmbeddings.from_directory(
+                args.embeddings, key=args.embedding_key, pattern=args.shard_file_pattern
             )
+            evaluate_rotation_embeddings(embeddings_by_shard=sharded, **common)
         else:
             embeddings = load_embeddings(args.embeddings, key=args.embedding_key)
-            evaluate_rotation_embeddings(
-                dataset_dir=args.dataset_dir,
-                embeddings=embeddings,
-                output_dir=output_dir,
-                model_name=args.model_name,
-                metrics=metrics,
-            )
+            evaluate_rotation_embeddings(embeddings=embeddings, **common)
         print(f"Rotation report saved to {output_dir}")
         return
 
@@ -147,12 +227,40 @@ def _evaluate_embeddings(args: argparse.Namespace) -> None:
         return
 
 
+def _download(args: argparse.Namespace) -> None:
+    from three_dbench import download
+
+    if args.what == "dataset":
+        if args.task == "chirality_legacy_15218":
+            raise SystemExit("The 15,218-conformer chirality set is only published as embeddings.")
+        download.download_dataset(
+            args.task,
+            args.out or (DATA_ROOT / "hf"),
+            repo_id=args.repo_id or download.DATASET_REPO_ID,
+            revision=args.revision,
+            overwrite=args.overwrite,
+        )
+    else:
+        download.download_embeddings(
+            args.task,
+            args.out or (DATA_ROOT / "embeddings"),
+            models=args.models,
+            include_results=args.results,
+            repo_id=args.repo_id or download.EMBEDDINGS_REPO_ID,
+            revision=args.revision,
+            verify=not args.no_verify,
+            dry_run=args.dry_run,
+        )
+
+
 def main() -> None:
     args = _parse_args()
     if args.command == "convert":
         _convert_dataset(args)
     elif args.command == "evaluate":
         _evaluate_embeddings(args)
+    elif args.command == "download":
+        _download(args)
 
 
 if __name__ == "__main__":
