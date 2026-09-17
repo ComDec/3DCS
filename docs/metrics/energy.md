@@ -106,8 +106,12 @@ n = 2,000 frames per window. Every metric uses all n(n−1)/2 = 1,999,000 frame 
   unit-normalised vectors and stored as **float16** in `paper` and **float32** in `v2`.
   `--metric-embed euclidean` gives ‖ẑᵢ − ẑⱼ‖²/4 on unit vectors.
 - *Fingerprints* (Tanimoto, automatic for bit-vector pickles): Δᵢⱼ = 1 − |Fᵢ∩Fⱼ| / |Fᵢ∪Fⱼ|, with
-  RDKit `BulkTanimotoSimilarity` (similarity 0 for two empty fingerprints). It uses the same storage
-  dtype rule. Dense 0/1 arrays with `--metric-embed tanimoto` give identical values.
+  RDKit `BulkTanimotoSimilarity`. It uses the same storage dtype rule. Dense 0/1 arrays with
+  `--metric-embed tanimoto` give identical values, with one exception: for two all-zero fingerprints
+  the dense path always returns similarity 0, while RDKit returns 1.0 up to version 2025.09 and 0.0
+  from 2026.03 on. The published E3FP fingerprints contain no all-zero vector (checked for all
+  999,988 trajectory frames and all 52,391 chirality conformers), so the tables do not depend on
+  this.
 
 **Aggregation.** For every metric, the per-window values of all molecules are pooled, non-finite
 values are dropped, and the result is reported as mean ± 1.96·sd(ddof = 1)/√n, with n = 1,000.

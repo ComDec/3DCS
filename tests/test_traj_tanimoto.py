@@ -28,7 +28,22 @@ def test_dense_tanimoto_matches_rdkit(dtype):
     ref = pairwise_tanimoto_fps_large(fps, block_size=16, out_mode="condensed", dtype_out=dtype, progress=False)
     dense = tanimoto_distances_dense(_dense(fps, 128), dtype_out=dtype)
     assert dense.dtype == ref.dtype
-    np.testing.assert_array_equal(dense, ref)
+    # Pairs of two all-zero fingerprints are excluded: RDKit's similarity for them changed from 1.0
+    # (<= 2025.09) to 0.0 (>= 2026.03). The published fingerprints contain no all-zero vector, so the
+    # reproduction is unaffected; see test_dense_tanimoto_empty_pairs for the dense convention.
+    on_bits = np.asarray([fp.GetNumOnBits() for fp in fps])
+    i, j = np.triu_indices(len(fps), 1)
+    comparable = (on_bits[i] > 0) | (on_bits[j] > 0)
+    np.testing.assert_array_equal(dense[comparable], ref[comparable])
+
+
+def test_dense_tanimoto_empty_pairs():
+    """Two all-zero fingerprints have similarity 0 (distance 1) in the dense implementation."""
+    X = np.zeros((3, 8), dtype=np.uint8)
+    X[2, [1, 4]] = 1
+    D = tanimoto_distances_dense(X, dtype_out=np.float32)
+    assert D[0] == pytest.approx(1.0)  # (0, 1): both empty
+    assert D[1] == pytest.approx(1.0)  # (0, 2): empty vs non-empty
 
 
 def test_fingerprints_default_to_tanimoto():

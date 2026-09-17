@@ -114,7 +114,7 @@ within the tolerance in `expected.csv`; the notes in each `expected.csv` list th
 
 | Table | E3FP | GemNet | MolAE | MolSpectra | UniMol | FMG | MACE |
 |---|---|---|---|---|---|---|---|
-| 1 Geometry | pending (rotation embeddings) | reproducible | pending (rotation embeddings) | pending (rotation embeddings) | pending (rotation embeddings) | not in table | not in table |
+| 1 Geometry | pending (rotation embeddings) | full 16-shard run pending | pending (rotation embeddings) | pending (rotation embeddings) | pending (rotation embeddings) | not in table | not in table |
 | 2 Chirality (zero-shot) | reproducible | reproducible | reproducible | reproducible | reproducible | reproducible | reproducible |
 | 3 / 6 / 7 Energy (zero-shot) | reproducible | reproducible | reproducible | reproducible | reproducible | partially | partially |
 | 4 Chirality correlation | pending (evaluation code) | pending (evaluation code) | pending (evaluation code) | pending (evaluation code) | pending (evaluation code) | not in table | not in table |
@@ -129,14 +129,20 @@ Further notes:
 - **Table 1.** The published rows come from two runs: Spearman, Kendall, CKA, isotonic R² and
   Torsion-SP from a 10 % molecule sample (its key list is in `reproduce/table1_geometry/`), LIE@k and
   AS from all molecules. The per-molecule outputs of both runs for all five models are published in
-  the embeddings repository (`results/rotation/`). See
-  [docs/metrics/geometry.md](docs/metrics/geometry.md).
+  the embeddings repository (`results/rotation/`). GemNet is the only model whose rotation embeddings
+  were kept, and a full 16-shard recomputation has not been run yet; `reproduce/table1_geometry/`
+  currently verifies one shard against the backed-up per-molecule outputs. In the full published run,
+  two molecules could not be processed and the embedding cursor was not advanced, so the molecules
+  after them in shards 1 and 2 (6.2 % of the total) were scored with embeddings shifted by 3 and 7
+  rows; this affects the LIE@k and AS columns. `--replicate-offset-drift` reproduces that behaviour.
+  See [docs/metrics/geometry.md](docs/metrics/geometry.md).
 - **Table 4.** The backed-up summary behind the Spearman, Kendall and CKA rows is published
   (`results/chirality/chirality_metrics_summary.csv` in the embeddings repository); outputs for the
   OPD rows were not found in our backups. The code for this table is not in the release.
-- **Fine-tuning (Tables 5, 8, 9).** Fine-tuning code and checkpoints are not included. For the rMD17
-  tables, the train/test indices we found correspond to the official split 01
-  ([splits/rmd17/](splits/rmd17/README.md)).
+- **Fine-tuning (Tables 5, 8, 9).** Fine-tuning code and checkpoints are not part of this release.
+  Checkpoints for the chirality fine-tuning (Table 5) are being prepared and will be added later; no
+  checkpoints are planned for the rMD17 tables (8, 9). For the rMD17 tables, the train/test indices we
+  found correspond to the official split 01 ([splits/rmd17/](splits/rmd17/README.md)).
 
 ## Dataset structure
 
