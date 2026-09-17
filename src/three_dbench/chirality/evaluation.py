@@ -23,7 +23,6 @@ import json
 import os
 import pickle
 import re
-import sys
 import warnings
 from collections.abc import Sequence
 from concurrent.futures import ProcessPoolExecutor, as_completed
@@ -910,27 +909,9 @@ def _take_rows(embeddings: Union[np.ndarray, Sequence[Any]], idxs: np.ndarray, m
     return [embeddings[i] for i in idxs]
 
 
-# ---- process-pool helpers (module-level so that they can be pickled) ----
-_WORKER: dict = {}
-
-
-def _worker_setup(embeddings, en_labels, mode, settings, threads_per_worker):
-    _WORKER.update(embeddings=embeddings, en_labels=en_labels, mode=mode, settings=settings)
-    if threads_per_worker:
-        try:
-            from threadpoolctl import threadpool_limits
-
-            _WORKER["_limits"] = threadpool_limits(limits=int(threads_per_worker))
-        except Exception:
-            pass
-
-
-def _worker_run(batch):
-    emb, labels, mode, settings = _WORKER["embeddings"], _WORKER["en_labels"], _WORKER["mode"], _WORKER["settings"]
-    out = []
-    for pos, mol_id, idxs in batch:
-        out.append((pos, evaluate_molecule(mol_id, _take_rows(emb, idxs, mode), labels[idxs], mode, settings)))
-    return out
+# ---- parallel helpers (module-level so that they can be pickled) ----
+def _evaluate_batch(batch, mode: str, settings: ChiralitySettings) -> list[tuple[int, dict]]:
+    return [(pos, evaluate_molecule(mol_id, sub, labels, mode, settings)) for pos, mol_id, sub, labels in batch]
 
 
 def _run_molecules(
@@ -955,29 +936,31 @@ def _run_molecules(
             for mol_id, idxs in it
         ]
 
-    # Every molecule is evaluated independently with its own fixed seeds, so the split into
-    # batches does not change any per-molecule value. Large molecules are spread round-robin.
+    # Every molecule is evaluated independently with its own fixed seeds, so the split into batches
+    # and the number of workers do not change any per-molecule value. Each batch carries only the rows
+    # of its molecules; large molecules are spread round-robin over the batches.
+    from joblib import Parallel, delayed
+
     order = sorted(range(len(tasks)), key=lambda i: -int(tasks[i][1].size))
     n_batches = min(len(tasks), n_jobs * 8)
     batches: list[list] = [[] for _ in range(n_batches)]
     for j, i in enumerate(order):
         mol_id, idxs = tasks[i]
-        batches[j % n_batches].append((i, mol_id, idxs))
+        batches[j % n_batches].append((i, mol_id, _take_rows(embeddings, idxs, mode), en_labels[idxs]))
 
-    import multiprocessing as mp
+    try:  # joblib >= 1.3
+        from joblib import parallel_config as _backend_config
+    except ImportError:  # pragma: no cover
+        from joblib import parallel_backend as _backend_config
 
-    ctx = mp.get_context("fork" if sys.platform.startswith("linux") else "spawn")
+    jobs = (delayed(_evaluate_batch)(b, mode, settings) for b in batches)
+    # One BLAS/OpenMP thread per worker: avoids oversubscription; KMeans results do not depend on it.
+    with _backend_config("loky", inner_max_num_threads=1):
+        parts = Parallel(n_jobs=n_jobs)(jobs)
     rows: list[Optional[dict]] = [None] * len(tasks)
-    with ProcessPoolExecutor(
-        max_workers=n_jobs,
-        mp_context=ctx,
-        initializer=_worker_setup,
-        initargs=(embeddings, en_labels, mode, settings, 1),
-    ) as ex:
-        futs = [ex.submit(_worker_run, b) for b in batches]
-        for fut in tqdm(as_completed(futs), total=len(futs), disable=not progress, desc="batches"):
-            for pos, row in fut.result():
-                rows[pos] = row
+    for part in tqdm(parts, total=n_batches, disable=not progress, desc="batches"):
+        for pos, row in part:
+            rows[pos] = row
     return rows  # type: ignore[return-value]
 
 
