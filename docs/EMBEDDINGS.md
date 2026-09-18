@@ -45,9 +45,13 @@ for shard in range(16):
     vectors = []
     for row in part:
         for block in row["mol_blocks"]:
-            vectors.append(your_model(mol_from_block(block)))  # shape (dim,)
+            vectors.append(encode(mol_from_block(block)))  # your model, shape (dim,)
     np.savez(f"embeddings/my_model/rotation_conformers_{shard}.npz", arr_0=np.stack(vectors))
 ```
+
+[`baselines/`](../baselines/README.md) holds a worked version of this for each of the seven
+baseline models on the chirality set: input handling, the model call and the write, with the
+environment each one needs.
 
 Check alignment before evaluating: for flat arrays the number of rows must equal the sum of
 `n_conformers`; for by-shard files, each file must have `max(offset + n_conformers)` rows of its shard.
@@ -83,7 +87,7 @@ per-molecule metric outputs of the original runs (`results/rotation/metrics_all_
 
 | Model | Dimension | Notes |
 |---|---|---|
-| E3FP | 1024 bits | `e3fp` 1.2.7, `fprints_from_mol(mol, fprint_params=dict(bits=1024, level=5, radius_multiplier=1.5, stereo=True, include_disconnected=True, rdkit_invariants=True, first=1, counts=False))`, hydrogens kept. Recomputing with these parameters from the original RDKit molecules reproduces 3,000 of 3,000 sampled chirality fingerprints bit for bit; starting from the HF MolBlocks, about 5 % of fingerprints differ. |
+| E3FP | 1024 bits | `e3fp` 1.2.7, `fprints_from_mol(mol, fprint_params=dict(bits=1024, level=5, radius_multiplier=1.5, stereo=True, include_disconnected=True, rdkit_invariants=True, first=1, counts=False))`, hydrogens kept. Recomputing with these parameters from the original RDKit molecules reproduces all 52,391 chirality fingerprints bit for bit; starting from the HF MolBlocks, about 5 % of fingerprints differ. |
 | GemNet (GemNet-Q) | 128 | one 128-d vector per conformer, key `gemnet`. The GemNet-Q weights are not part of this release. |
 | UniMol | 512 | one 512-d vector per conformer, key `arr_0`. |
 | MolAE | 512 | one 512-d vector per conformer, key `arr_0`. |
@@ -94,3 +98,15 @@ per-molecule metric outputs of the original runs (`results/rotation/metrics_all_
 The reference values in [`reproduce/`](../reproduce/README.md) are computed from these files.
 Embeddings produced with a different extractor are evaluated the same way, but their values are not
 expected to match these reference values.
+
+### Extracting these embeddings
+
+[`baselines/<model>/extract_chirality.py`](../baselines/README.md) computes the chirality embedding
+of each model from the dataset, in the same row order and under the same array key as the file
+above. Each script drives an upstream checkout that you install yourself — no third-party code or
+weights are redistributed — and `baselines/<model>/ENVIRONMENT.md` gives the upstream repository and
+commit, the weight file with its SHA-256 and where to download it, and the exact install commands.
+`--verify` compares a freshly extracted file with the published one and prints the checksums, the
+elementwise differences and the per-row cosine similarity;
+[`baselines/README.md`](../baselines/README.md) tabulates those numbers for a full run of every
+script.

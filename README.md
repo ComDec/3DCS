@@ -17,6 +17,7 @@ is `three_dbench`.
 |---|---|
 | Datasets | [`EscheWang/3dcs`](https://huggingface.co/datasets/EscheWang/3dcs), configs `chirality`, `rotation`, `traj_frames`, `traj_energies` (license CC BY-SA 4.0) |
 | Baseline embeddings and original metric outputs | [`EscheWang/3dcs-embeddings`](https://huggingface.co/datasets/EscheWang/3dcs-embeddings) (see [docs/EMBEDDINGS.md](docs/EMBEDDINGS.md)) |
+| Embedding-extraction scripts | [baselines/](baselines/README.md), one per model |
 | Metric definitions (`paper` and `v2`) | [docs/METRICS.md](docs/METRICS.md) |
 | Per-table reproduction scripts | [reproduce/](reproduce/README.md) |
 | rMD17 splits | [splits/rmd17/](splits/rmd17/README.md) |
@@ -92,6 +93,31 @@ A small demo with bundled GemNet fixtures:
 python examples/demo.py all
 ```
 
+## Baseline embeddings
+
+The embeddings of the seven baseline models are published in
+[`EscheWang/3dcs-embeddings`](https://huggingface.co/datasets/EscheWang/3dcs-embeddings) and are
+what the reference values in [reproduce/](reproduce/README.md) are computed from.
+[docs/EMBEDDINGS.md](docs/EMBEDDINGS.md) lists the array key, shape and layout of every file.
+
+[baselines/](baselines/README.md) holds one extraction script per model, which turns the chirality
+conformers into the same matrix:
+
+```bash
+python baselines/mace/extract_chirality.py \
+  --dataset hf:EscheWang/3dcs:chirality --out chirality_mace.npz \
+  --device cuda --batch-size 1 --compress --verify
+```
+
+Each script takes the Hugging Face config or a pickle of RDKit molecules, prints the versions and
+checksums of everything it used, and writes the documented array key. `--verify` compares the
+result with the published file of that model and prints the checksums, the elementwise differences
+and the per-row cosine similarity. No third-party code or weights are redistributed: every model
+directory has an `ENVIRONMENT.md` with the upstream repository and commit, the weight file with its
+SHA-256 and where to download it, and the exact install commands.
+[baselines/README.md](baselines/README.md) tabulates, per model, the output dimension, array key,
+hydrogen handling, pooling and the measured agreement with the published file.
+
 ## Reproducing the tables
 
 Each table has a directory under [`reproduce/`](reproduce/README.md) with a `run.sh` (download,
@@ -125,7 +151,8 @@ Further notes:
 
 - **Embedding extraction.** The published embeddings are the files used for the paper's evaluations.
   [docs/EMBEDDINGS.md](docs/EMBEDDINGS.md) documents the format, array key, shape and provenance of
-  each file, and the E3FP fingerprint parameters.
+  each file, and [baselines/](baselines/README.md) holds the extraction script and environment of
+  each model.
 - **Table 1.** The published rows come from two runs: Spearman, Kendall, CKA, isotonic R² and
   Torsion-SP from a 10 % molecule sample (its key list is in `reproduce/table1_geometry/`), LIE@k and
   AS from all molecules. The per-molecule outputs of both runs for all five models are published in
@@ -154,6 +181,7 @@ distributed).
 
 - [docs/USAGE.md](docs/USAGE.md): CLI and Python API
 - [docs/EMBEDDINGS.md](docs/EMBEDDINGS.md): embedding formats and the published baseline embeddings
+- [baselines/README.md](baselines/README.md): the embedding-extraction script of each baseline model
 - [docs/METRICS.md](docs/METRICS.md): metric definitions (`paper` and `v2`)
 - [reproduce/README.md](reproduce/README.md): reproducing the paper tables
 - [CONTRIBUTING.md](CONTRIBUTING.md): development setup
