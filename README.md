@@ -17,6 +17,7 @@ is `three_dbench`.
 |---|---|
 | Datasets | [`EscheWang/3dcs`](https://huggingface.co/datasets/EscheWang/3dcs), configs `chirality`, `rotation`, `traj_frames`, `traj_energies` (license CC BY-SA 4.0) |
 | Baseline embeddings and original metric outputs | [`EscheWang/3dcs-embeddings`](https://huggingface.co/datasets/EscheWang/3dcs-embeddings) (see [docs/EMBEDDINGS.md](docs/EMBEDDINGS.md)) |
+| Embedding-extraction scripts | [baselines/](baselines/README.md), one per model |
 | Metric definitions (`paper` and `v2`) | [docs/METRICS.md](docs/METRICS.md) |
 | Per-table reproduction scripts | [reproduce/](reproduce/README.md) |
 | rMD17 splits | [splits/rmd17/](splits/rmd17/README.md) |
@@ -82,7 +83,7 @@ python -m three_dbench evaluate rotation \
 Every evaluation writes a summary (`summary.csv`), per-molecule results and the configuration to
 `--output-dir` (default `results/<task>/<model>`, relative to the working directory or
 `$THREE_DBENCH_HOME`). `--metric-version paper` (default) uses the definitions behind the published
-numbers; `--metric-version v2` uses the corrected definitions described in
+numbers; `--metric-version v2` uses the alternative definitions described in
 [docs/METRICS.md](docs/METRICS.md). See [docs/USAGE.md](docs/USAGE.md) for all options, embedding
 layouts and the Python API.
 
@@ -92,11 +93,39 @@ A small demo with bundled GemNet fixtures:
 python examples/demo.py all
 ```
 
-## Reproducing the paper
+## Baseline embeddings
+
+The embeddings of the seven baseline models are published in
+[`EscheWang/3dcs-embeddings`](https://huggingface.co/datasets/EscheWang/3dcs-embeddings) and are
+what the reference values in [reproduce/](reproduce/README.md) are computed from.
+[docs/EMBEDDINGS.md](docs/EMBEDDINGS.md) lists the array key, shape and layout of every file.
+
+[baselines/](baselines/README.md) holds one extraction script per model, which turns the chirality
+conformers into the same matrix:
+
+```bash
+python baselines/mace/extract_chirality.py \
+  --dataset hf:EscheWang/3dcs:chirality --out chirality_mace.npz \
+  --device cuda --batch-size 1 --compress --verify
+```
+
+All seven take the same `--dataset` values — `hf:<repo>[:<config>]`, `hfdisk:<dir>` or a plain
+`save_to_disk` directory, a bare Hub dataset id, a pickle of RDKit molecules, or `lmdb:<file>` —
+print the versions and checksums of everything they used, and write the documented array key.
+`--verify` compares the result with the published file of that model and prints the checksums, the
+elementwise differences and the per-row cosine similarity; with `--limit`/`--start` it compares the
+rows the run covers (`--verify-rows`). No third-party code or weights are redistributed: every model
+directory has an `ENVIRONMENT.md` with the upstream repository and commit, the weight file with its
+SHA-256 and where to download it, and the exact install commands.
+[baselines/README.md](baselines/README.md) tabulates, per model, the output dimension, array key,
+hydrogen handling, pooling and the measured agreement with the published file.
+
+## Reproducing the tables
 
 Each table has a directory under [`reproduce/`](reproduce/README.md) with a `run.sh` (download,
-evaluation, `results.csv`) and an `expected.csv` (printed value, recomputed value with 6 decimals,
-tolerance and notes). `reproduce/compare.py` prints PASS/FAIL per cell.
+evaluation, `results.csv`) and an `expected.csv` (the value as printed in the paper, the reference
+value computed with this code at 6 decimals, a tolerance and notes). `reproduce/compare.py` compares
+a run against the reference values and prints PASS/FAIL per cell.
 
 | Table | Script | What it recomputes | Runtime (24 workers) |
 |---|---|---|---|
@@ -107,40 +136,36 @@ tolerance and notes). `reproduce/compare.py` prints PASS/FAIL per cell.
 Download sizes: rotation dataset ~7.5 GB, rotation GemNet embeddings ~5.2 GB, trajectory embeddings
 ~7 GB, chirality embeddings ~0.4 GB.
 
-### Status
+### Coverage
 
-"Reproducible" means that the published value is recomputed from released data, embeddings and code
-within the tolerance in `expected.csv`; the notes in each `expected.csv` list the known exceptions.
+Each `expected.csv` holds the reference values this code computes for the cells that the published
+artifacts cover:
 
-| Table | E3FP | GemNet | MolAE | MolSpectra | UniMol | FMG | MACE |
-|---|---|---|---|---|---|---|---|
-| 1 Geometry | pending (rotation embeddings) | full 16-shard run pending | pending (rotation embeddings) | pending (rotation embeddings) | pending (rotation embeddings) | not in table | not in table |
-| 2 Chirality (zero-shot) | reproducible | reproducible | reproducible | reproducible | reproducible | reproducible | reproducible |
-| 3 / 6 / 7 Energy (zero-shot) | reproducible | reproducible | reproducible | reproducible | reproducible | partially | partially |
-| 4 Chirality correlation | pending (evaluation code) | pending (evaluation code) | pending (evaluation code) | pending (evaluation code) | pending (evaluation code) | not in table | not in table |
-| 5 Chirality fine-tuning | not in table | pending | pending | pending | pending | pending | pending |
-| 8 / 9 rMD17 fine-tuning | pending | pending | pending | pending | pending | pending | pending |
+| Table | What the published artifacts cover |
+|---|---|
+| 1 Geometry | GemNet rotation embeddings (all 16 shards); for E3FP, MolAE, MolSpectra and UniMol, the per-molecule outputs of the original runs (`results/rotation/` in the embeddings repository) |
+| 2 Chirality (zero-shot) | chirality embeddings of all 7 models |
+| 3 / 6 / 7 Energy (zero-shot) | trajectory embeddings of all 7 models |
+| 4 Chirality correlation | the summary of the original run (`results/chirality/chirality_metrics_summary.csv`) and the embeddings of the earlier 15,218-conformer set (`chirality_legacy_15218/`); this release has no script for this table |
+| 5 / 8 / 9 Fine-tuning | this repository is the evaluation toolkit; fine-tuning code and checkpoints are not part of it |
 
 Further notes:
 
-- **Embedding extraction.** The published embeddings are the files used for the paper. Extraction
-  scripts are not part of this repository; the per-model status (known, partially known, unknown) is
-  listed in [docs/EMBEDDINGS.md](docs/EMBEDDINGS.md).
+- **Embedding extraction.** The published embeddings are the files used for the paper's evaluations.
+  [docs/EMBEDDINGS.md](docs/EMBEDDINGS.md) documents the format, array key, shape and provenance of
+  each file, and [baselines/](baselines/README.md) holds the extraction script and environment of
+  each model.
 - **Table 1.** The published rows come from two runs: Spearman, Kendall, CKA, isotonic R² and
   Torsion-SP from a 10 % molecule sample (its key list is in `reproduce/table1_geometry/`), LIE@k and
   AS from all molecules. The per-molecule outputs of both runs for all five models are published in
-  the embeddings repository (`results/rotation/`). GemNet is the only model whose rotation embeddings
-  were kept, and a full 16-shard recomputation has not been run yet; `reproduce/table1_geometry/`
-  currently verifies one shard against the backed-up per-molecule outputs. Use
-  `--replicate-offset-drift` to match the row alignment of the published run; see
-  [docs/metrics/geometry.md](docs/metrics/geometry.md) for the exact definitions used by each mode.
-- **Table 4.** The backed-up summary behind the Spearman, Kendall and CKA rows is published
-  (`results/chirality/chirality_metrics_summary.csv` in the embeddings repository); outputs for the
-  OPD rows were not found in our backups. The code for this table is not in the release.
-- **Fine-tuning (Tables 5, 8, 9).** Fine-tuning code and checkpoints are not part of this release;
-  see [Recommended use](#recommended-use). The splits are released: the rMD17 tables use the official
-  split 01 ([splits/rmd17/](splits/rmd17/README.md)) and the chirality fine-tuning split is in
-  [splits/chirality_finetune/](splits/chirality_finetune/README.md).
+  the embeddings repository (`results/rotation/`). LIE@k and AS of that full run correspond to
+  embedding rows shifted by 3 and 7 positions in parts of shards 1 and 2;
+  `--replicate-offset-drift` recomputes the metrics with the same indexing, and the regular columns
+  use the per-shard `offset` of the dataset. See [docs/metrics/geometry.md](docs/metrics/geometry.md).
+- **Splits.** The rMD17 fine-tuning inputs for Tables 8 and 9 correspond to the official split 01
+  ([splits/rmd17/](splits/rmd17/README.md)); the chirality fine-tuning split is in
+  [splits/chirality_finetune/](splits/chirality_finetune/README.md). Fine-tuning code and checkpoints
+  are not part of this repository; see [Recommended use](#recommended-use).
 
 ### Recommended use
 
@@ -175,6 +200,7 @@ distributed).
 
 - [docs/USAGE.md](docs/USAGE.md): CLI and Python API
 - [docs/EMBEDDINGS.md](docs/EMBEDDINGS.md): embedding formats and the published baseline embeddings
+- [baselines/README.md](baselines/README.md): the embedding-extraction script of each baseline model
 - [docs/METRICS.md](docs/METRICS.md): metric definitions (`paper` and `v2`)
 - [reproduce/README.md](reproduce/README.md): reproducing the paper tables
 - [CONTRIBUTING.md](CONTRIBUTING.md): development setup

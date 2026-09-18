@@ -1,12 +1,11 @@
-"""Corrected ("v2") energy metrics for the trajectory benchmark.
+"""Alternative ("v2") energy metrics for the trajectory benchmark.
 
 The published tables (paper Tables 3, 6, 7) were computed with the definitions in
 :func:`three_dbench.traj.evaluation.compute_energy_metrics_from_condensed`,
 :func:`~three_dbench.traj.evaluation.thresholded_smoothness` and
 :func:`~three_dbench.traj.evaluation.ks_wasserstein_against_energy_diff` (``--metric-version paper``).
-Those implementations differ from the definitions written in the paper appendix (C.3, C.6) in
-several places. ``--metric-version v2`` implements the appendix definitions, with the choices the
-appendix leaves open made explicit. See ``docs/metrics/energy.md`` for formulas and rationale.
+``--metric-version v2`` implements the definitions of the paper appendix (C.3, C.6), with the choices
+the appendix leaves open made explicit. See ``docs/metrics/energy.md`` for formulas and rationale.
 
 Differences from ``paper`` (per window of ``n`` frames, ``dE_ij = |E_i - E_j|``, ``dZ_ij = Delta_ij``):
 

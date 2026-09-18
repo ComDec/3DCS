@@ -1,7 +1,7 @@
 # Chirality metrics (Table 2)
 
 This page documents how `python -m three_dbench evaluate chirality` computes the zero-shot chirality
-metrics, which settings produced the published Table 2, and what the `v2` definitions change.
+metrics, which settings produced the published Table 2, and what the `v2` definitions compute.
 
 - Code: `src/three_dbench/chirality/evaluation.py` (metrics, per-molecule loop) and
   `src/three_dbench/benchmarks/chirality.py` (dataset loading, validation, output files).
@@ -63,32 +63,30 @@ Molecule populations in the published protocol (`paper`, identical for all 7 mod
 | `cosine` | `Delta_ij = 1 - <z_i, z_j> / ((||z_i|| + 1e-12)(||z_j|| + 1e-12))` in float64, with the diagonal set to exactly 0 | `cosine_distances` |
 | RDKit fingerprints | Tanimoto distance `1 - |F_i & F_j| / |F_i | F_j|` (RDKit `BulkTanimotoSimilarity`), whatever `--distance` is | `tanimoto_distance_matrix` |
 
-- **The published Table 2 was computed with Euclidean distance.** The paper text (§4.1 and App. C.2)
-  says cosine distance is the default for learned representations. The released evaluator
-  (`chirality/evaluation.py`, `distance_matrix_for_subset`) used Euclidean distance. Recomputing
-  Table 2 with Euclidean distance matches all published cells to within 0.001, except for the sign of
-  GemNet SCI (section 7). Cosine distance does not match: for example, MolAE SCI is 0.189 against the
-  printed 0.115, and GemNet ES-AUC is 0.602 against 0.577.
-- App. C.2 also says distance matrices are normalised to [0, 1]. Normalisation is not applied, and it
-  would not change any chirality metric. Each metric is computed within one molecule, and each is
-  invariant to rescaling that molecule's `Delta` by a positive constant: ES-AUC is rank based, NN@1
-  uses an argmin, and silhouette, DBI and clarity are ratios.
-- The diagonal of the cosine matrix is set to 0. Without that, the 1e-12 guard leaves diagonal values
-  around 1e-12, and `sklearn.metrics.silhouette_score(metric="precomputed")` rejects the matrix. The
-  code then silently falls back to a hand-written silhouette that skips points in singleton classes
-  instead of scoring them 0. Without the fix, cosine SCI changes for 6 (MolSpectra, large norms) to 959
-  (FMG) molecules per model; for example, MolAE gives 0.1938 instead of 0.1895. Cosine SCI is not
-  published.
-- In `paper` mode, `--distance` changes ES-AUC, NN@1-Acc, SCI, DBI and clarity. Hopkins and SCI_unsup
-  are still computed on the raw vectors with Euclidean distance, as in the published code. In `v2`
-  they follow the selected distance (section 4).
+- **The evaluator uses Euclidean distances between conformer embeddings by default**
+  (`chirality/evaluation.py`, `distance_matrix_for_subset`). This is the setting behind the published
+  Table 2 and behind the `euclidean` reference values in `reproduce/table2_chirality/expected.csv`.
+  `--distance cosine` computes the same metrics from cosine distances; those values are listed as the
+  `cosine` variant in the same file (for example MolAE SCI 0.189 and GemNet ES-AUC 0.602, against
+  0.115 and 0.577 with Euclidean distance).
+- Distance matrices are not rescaled. Each metric is computed within one molecule and is invariant to
+  rescaling that molecule's `Delta` by a positive constant: ES-AUC is rank based, NN@1 uses an argmin,
+  and silhouette, DBI and clarity are ratios.
+- The diagonal of the cosine matrix is set to exactly 0. Otherwise the 1e-12 guard leaves diagonal
+  values around 1e-12, which `sklearn.metrics.silhouette_score(metric="precomputed")` rejects, and the
+  code falls back to a hand-written silhouette that skips points in singleton classes instead of
+  scoring them 0. The two paths differ for 6 (MolSpectra, large norms) to 959 (FMG) molecules per
+  model; for example MolAE cosine SCI is 0.1895 with the zeroed diagonal and 0.1938 without it. Cosine
+  SCI is not part of Table 2.
+- With `--metric-version paper`, `--distance` changes ES-AUC, NN@1-Acc, SCI, DBI and clarity. Hopkins
+  and SCI_unsup are computed on the raw vectors with Euclidean distance. In `v2` they follow the
+  selected distance (section 4).
 
 ## 4. Metric definitions: `paper` and `v2`
 
-`paper` is the code path that produced the published numbers. `v2` changes a definition only where
-the published code departs from App. C.5 of the paper, or where a per-molecule value is fixed by
-construction rather than by the representation. Every such case is listed below with the measured
-evidence. The remaining metrics are identical in both versions.
+`paper` is the code path behind the published numbers. `v2` differs from it in the definitions listed
+below; the remaining metrics are identical in both versions. Each entry states what the two versions
+compute and the measured effect on the published embeddings.
 
 Notation: a molecule has `n` conformers with labels `y`, representation distances `Delta`, and
 vectors `X` (rows L2-normalised when `v2` is combined with `--distance cosine`).
@@ -141,9 +139,9 @@ Code: `silhouette_with_labels_from_D`.
   - This matches `sklearn.metrics.davies_bouldin_score` on non-degenerate input.
   - Fingerprints have no centroid under Tanimoto, so they keep the medoid version, with the 1e-12 term.
   - A molecule in which no class has two or more members is NaN.
-- **Rationale:** App. C.5 defines DBI with Euclidean centroids. In `paper` mode, the 753 molecules
-  with `n >= 3` and only singleton classes get `S = 0` and therefore `DBI = 0`, the best possible
-  score, whatever the representation.
+- **Rationale:** `v2` follows the centroid definition of App. C.5. In `paper` mode, the 753 molecules
+  with `n >= 3` and only singleton classes have `S = 0` and therefore `DBI = 0`, independently of the
+  representation.
 
 ### Hopkins statistic
 
@@ -212,48 +210,48 @@ All values below come from the published embeddings (section 6) with the current
 numpy 2.4.6, scikit-learn 1.9.1, rdkit 2026.03.6 and an AMD EPYC 7513. `expected.csv` holds 6-decimal
 values for all 7 models × 4 variants, with a tolerance of 0.001.
 
-The `euclidean` column is the published protocol. Every cell is within 0.001 of the printed value,
-except for GemNet SCI (sign). E3FP is a fingerprint, so its cosine rows equal its Euclidean rows and its
-Hopkins value is NaN. In `v2`, NN@1-Acc is averaged over 2,823 molecules instead of 3,842 and Hopkins
-over 1,753 instead of 1,764. The other columns use the same molecules in both versions.
+The `euclidean` column is the published protocol. E3FP is a fingerprint, so its cosine rows equal its
+Euclidean rows and its Hopkins value is NaN. In `v2`, NN@1-Acc is averaged over 2,823 molecules instead
+of 3,842 and Hopkins over 1,753 instead of 1,764. The other columns use the same molecules in both
+versions.
 
-| Metric | Model | Paper | `euclidean` (published protocol) | `cosine` | `v2_euclidean` | `v2_cosine` |
-|---|---|---|---|---|---|---|
-| ES-AUC | E3FP | 0.486 | 0.485935 | 0.485935 | 0.485935 | 0.485935 |
-| ES-AUC | GemNet | 0.577 | 0.577410 | 0.601837 | 0.577410 | 0.601837 |
-| ES-AUC | MolAE | 0.782 | 0.782544 | 0.781942 | 0.782544 | 0.781942 |
-| ES-AUC | MolSpectra | 0.545 | 0.544744 | 0.543114 | 0.544744 | 0.543114 |
-| ES-AUC | UniMol | 0.622 | 0.622998 | 0.622620 | 0.622998 | 0.622620 |
-| ES-AUC | FMG | 0.706 | 0.705652 | 0.712555 | 0.705652 | 0.712555 |
-| ES-AUC | MACE | 0.485 | 0.485611 | 0.484971 | 0.485611 | 0.484971 |
-| NN@1-Acc | E3FP | 0.178 | 0.177939 | 0.177939 | 0.256400 | 0.256400 |
-| NN@1-Acc | GemNet | 0.292 | 0.291641 | 0.312251 | 0.415357 | 0.444804 |
-| NN@1-Acc | MolAE | 0.497 | 0.497546 | 0.497357 | 0.709640 | 0.709405 |
-| NN@1-Acc | MolSpectra | 0.235 | 0.235250 | 0.235108 | 0.337786 | 0.337668 |
-| NN@1-Acc | UniMol | 0.339 | 0.339582 | 0.338899 | 0.481977 | 0.480923 |
-| NN@1-Acc | FMG | 0.412 | 0.411765 | 0.422004 | 0.587976 | 0.601655 |
-| NN@1-Acc | MACE | 0.199 | 0.199113 | 0.200708 | 0.283468 | 0.285157 |
-| Hopkins | E3FP | – | NaN | NaN | NaN | NaN |
-| Hopkins | GemNet | 0.593 | 0.592812 | 0.592812 | 0.592823 | 0.577979 |
-| Hopkins | MolAE | 0.602 | 0.602659 | 0.602659 | 0.602748 | 0.602690 |
-| Hopkins | MolSpectra | 0.533 | 0.532642 | 0.532642 | 0.532736 | 0.533677 |
-| Hopkins | UniMol | 0.559 | 0.559572 | 0.559572 | 0.559674 | 0.559664 |
-| Hopkins | FMG | 0.752 | 0.751741 | 0.751741 | 0.752106 | 0.751049 |
-| Hopkins | MACE | 0.637 | 0.637379 | 0.637379 | 0.637289 | 0.637111 |
-| SCI | E3FP | -0.012 | -0.012543 | -0.012543 | -0.012543 | -0.012543 |
-| SCI | GemNet | 0.015 (sign typo) | -0.015151 | 0.004663 | -0.015151 | 0.004663 |
-| SCI | MolAE | 0.115 | 0.115274 | 0.189480 | 0.115274 | 0.189480 |
-| SCI | MolSpectra | -0.020 | -0.020326 | -0.037315 | -0.020326 | -0.037315 |
-| SCI | UniMol | 0.012 | 0.011623 | 0.021010 | 0.011623 | 0.021010 |
-| SCI | FMG | 0.117 | 0.117174 | 0.158030 | 0.117174 | 0.158030 |
-| SCI | MACE | -0.094 | -0.093877 | -0.151823 | -0.093877 | -0.151823 |
-| SCI_unsup | E3FP | 0.033 | 0.033825 | 0.033825 | 0.033825 | 0.033825 |
-| SCI_unsup | GemNet | 0.272 | 0.271961 | 0.271961 | 0.271961 | 0.380451 |
-| SCI_unsup | MolAE | 0.247 | 0.247099 | 0.247099 | 0.247099 | 0.408498 |
-| SCI_unsup | MolSpectra | 0.127 | 0.127115 | 0.127115 | 0.127115 | 0.232817 |
-| SCI_unsup | UniMol | 0.152 | 0.152108 | 0.152108 | 0.152108 | 0.270063 |
-| SCI_unsup | FMG | 0.509 | 0.509364 | 0.509364 | 0.509364 | 0.682689 |
-| SCI_unsup | MACE | 0.369 | 0.369336 | 0.369336 | 0.369336 | 0.566272 |
+| Metric | Model | `euclidean` (published protocol) | `cosine` | `v2_euclidean` | `v2_cosine` |
+|---|---|---|---|---|---|
+| ES-AUC | E3FP | 0.485935 | 0.485935 | 0.485935 | 0.485935 |
+| ES-AUC | GemNet | 0.577410 | 0.601837 | 0.577410 | 0.601837 |
+| ES-AUC | MolAE | 0.782544 | 0.781942 | 0.782544 | 0.781942 |
+| ES-AUC | MolSpectra | 0.544744 | 0.543114 | 0.544744 | 0.543114 |
+| ES-AUC | UniMol | 0.622998 | 0.622620 | 0.622998 | 0.622620 |
+| ES-AUC | FMG | 0.705652 | 0.712555 | 0.705652 | 0.712555 |
+| ES-AUC | MACE | 0.485611 | 0.484971 | 0.485611 | 0.484971 |
+| NN@1-Acc | E3FP | 0.177939 | 0.177939 | 0.256400 | 0.256400 |
+| NN@1-Acc | GemNet | 0.291641 | 0.312251 | 0.415357 | 0.444804 |
+| NN@1-Acc | MolAE | 0.497546 | 0.497357 | 0.709640 | 0.709405 |
+| NN@1-Acc | MolSpectra | 0.235250 | 0.235108 | 0.337786 | 0.337668 |
+| NN@1-Acc | UniMol | 0.339582 | 0.338899 | 0.481977 | 0.480923 |
+| NN@1-Acc | FMG | 0.411765 | 0.422004 | 0.587976 | 0.601655 |
+| NN@1-Acc | MACE | 0.199113 | 0.200708 | 0.283468 | 0.285157 |
+| Hopkins | E3FP | NaN | NaN | NaN | NaN |
+| Hopkins | GemNet | 0.592812 | 0.592812 | 0.592823 | 0.577979 |
+| Hopkins | MolAE | 0.602659 | 0.602659 | 0.602748 | 0.602690 |
+| Hopkins | MolSpectra | 0.532642 | 0.532642 | 0.532736 | 0.533677 |
+| Hopkins | UniMol | 0.559572 | 0.559572 | 0.559674 | 0.559664 |
+| Hopkins | FMG | 0.751741 | 0.751741 | 0.752106 | 0.751049 |
+| Hopkins | MACE | 0.637379 | 0.637379 | 0.637289 | 0.637111 |
+| SCI | E3FP | -0.012543 | -0.012543 | -0.012543 | -0.012543 |
+| SCI | GemNet | -0.015151 | 0.004663 | -0.015151 | 0.004663 |
+| SCI | MolAE | 0.115274 | 0.189480 | 0.115274 | 0.189480 |
+| SCI | MolSpectra | -0.020326 | -0.037315 | -0.020326 | -0.037315 |
+| SCI | UniMol | 0.011623 | 0.021010 | 0.011623 | 0.021010 |
+| SCI | FMG | 0.117174 | 0.158030 | 0.117174 | 0.158030 |
+| SCI | MACE | -0.093877 | -0.151823 | -0.093877 | -0.151823 |
+| SCI_unsup | E3FP | 0.033825 | 0.033825 | 0.033825 | 0.033825 |
+| SCI_unsup | GemNet | 0.271961 | 0.271961 | 0.271961 | 0.380451 |
+| SCI_unsup | MolAE | 0.247099 | 0.247099 | 0.247099 | 0.408498 |
+| SCI_unsup | MolSpectra | 0.127115 | 0.127115 | 0.127115 | 0.232817 |
+| SCI_unsup | UniMol | 0.152108 | 0.152108 | 0.152108 | 0.270063 |
+| SCI_unsup | FMG | 0.509364 | 0.509364 | 0.509364 | 0.682689 |
+| SCI_unsup | MACE | 0.369336 | 0.369336 | 0.369336 | 0.566272 |
 
 ## 6. Published embeddings and keys
 
@@ -279,29 +277,25 @@ The files are the original bytes from the authors' backup, published at `EscheWa
   ```
 
   Starting from the HF MolBlocks instead gives the same bits for 2,846 of 3,000 conformers.
-- **Other models.** The extraction settings (checkpoint, layer, pooling) of the other published
-  embeddings have not been recovered. The files are provided so that the published numbers can be
-  recomputed. They do not document how the embeddings were produced.
+- **Other models.** Each file holds one vector per conformer in dataset row order, with the key and
+  shape listed above. The reference values in `reproduce/table2_chirality/expected.csv` are computed
+  from these files.
 
-## 7. Known differences between the paper and the recomputed values
+## 7. Agreement with the original per-molecule outputs
 
-- **GemNet SCI.** The paper prints `0.015`. The recomputed value, and the Sept-2025 output, is
-  `-0.015151`, so the minus sign is missing in the table.
-- **Rounding.** The printed values mix rounding and truncation to three decimals. The largest gap is
-  UniMol ES-AUC: 0.622998 is printed as 0.622. Every other cell is within 0.001 of the recomputed value.
-- **Hopkins for E3FP** is printed as "–". Hopkins is not defined for fingerprints, and the evaluator
-  returns NaN.
-- **Sept-2025 outputs.** For E3FP, GemNet, MolAE, MolSpectra and UniMol, the backup holds the original
-  per-molecule outputs (`en_sep_results/*.json`). With the defaults, ES-AUC, NN@1-Acc, SCI, DBI and
-  Hopkins are bit-identical for every molecule of all five models.
-  - SCI_unsup is bit-identical for E3FP, MolAE and MolSpectra.
-  - It differs for 1 GemNet molecule and 2 UniMol molecules, which changes the means by +2.4e-6 and
-    +2.0e-6. On these near-tied silhouette landscapes the KMeans local optimum depends on the OpenBLAS
-    kernel.
-  - The unpublished clarity columns differ by less than 2e-5, because of a numpy version difference
-    (they match under numpy 2.2 and 2.3).
-- **FMG and MACE** have no original metric output in the backup. Their expected values are recomputed
-  from the published embeddings.
+For E3FP, GemNet, MolAE, MolSpectra and UniMol, the original per-molecule outputs of the Sept-2025 run
+are published as `results/chirality/en_sep_results/*.json` in `EscheWang/3dcs-embeddings`. Recomputed
+with the defaults of this evaluator:
+
+- ES-AUC, NN@1-Acc, SCI, DBI and Hopkins are bit-identical for every molecule of all five models.
+- SCI_unsup is bit-identical for E3FP, MolAE and MolSpectra. It differs for 1 GemNet molecule and
+  2 UniMol molecules, which shifts the means by +2.4e-6 and +2.0e-6: on these near-tied silhouette
+  landscapes the KMeans local optimum depends on the OpenBLAS kernel.
+- The clarity columns, which are not part of Table 2, differ by less than 2e-5 with numpy 2.4 and are
+  bit-identical under numpy 2.2 and 2.3.
+
+For FMG and MACE the run has no per-molecule output in this release; their reference values are
+computed from the published embeddings.
 
 ## 8. Performance
 

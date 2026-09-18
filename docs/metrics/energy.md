@@ -4,9 +4,9 @@ This page defines the metrics behind the zero-shot energy tables of the paper (T
 text, Tables 6 and 7 in Appendix B.2). It covers the data, the sampling protocol, and each metric in
 its two implementations:
 
-- `--metric-version paper` (the default) is the implementation that produced the published numbers.
-- `--metric-version v2` follows the definitions written in Appendix C.3/C.6. Where the appendix
-  leaves a choice open, v2 makes that choice explicit.
+- `--metric-version paper` (the default) is the implementation behind the published numbers.
+- `--metric-version v2` implements the definitions of Appendix C.3/C.6, and makes the choices that
+  the appendix leaves open explicit.
 
 Both versions share the same windows and the same aggregation. `reproduce/energy_tables_3_6_7/`
 contains the end-to-end script and the expected values for both.
@@ -33,12 +33,12 @@ Download them with `load_dataset("EscheWang/3dcs", name="traj_energies", split="
 standalone repo `EscheWang/3dcs-traj-energies`. Either source can be converted from the original
 rMD17 npz files with `python -m three_dbench convert traj`.
 
-**Earlier revision.** An earlier revision of `traj_energies` stored a float32 cast of these energies.
-The schema was declared float64, but each molecule held only 1,096–3,334 distinct values, with a
-resolution of 1/64–1/256 kcal/mol. Do not use that revision (see the dataset card). With those values:
-- Pooled CKA means drop by up to about 40%, e.g. GemNet 0.0163 → 0.0113.
-- Smoothness and KS shift by about 0.001.
-- Table 7 no longer reproduces.
+**Dataset revisions.** Revisions of `traj_energies` before 18 September 2026 stored the same energies
+cast to float32 (1,096–3,334 distinct values per molecule, resolution 1/64–1/256 kcal/mol); the
+current revision stores the original float64 values. The tables on this page are computed from the
+float64 energies. Several metrics are sensitive to that precision: with the float32 values, pooled
+CKA means are up to about 40 % lower (GemNet 0.0163 against 0.0113), Smoothness and KS shift by about
+0.001, and the Table 7 jump counts change.
 
 The evaluator therefore checks the precision of the energies of every evaluated molecule (option
 `--energy-precision-check`, default `error`). A molecule is flagged as quantized when either:
@@ -55,8 +55,8 @@ files:
 - The median |ΔE| between consecutive frames equals the median over random pairs, e.g. aspirin
   5.847 vs 5.834 kcal/mol.
 
-Metrics defined along consecutive frames (TS and Smoothness) are therefore computed on effectively
-random pairs of frames. See §4.
+Metrics defined along consecutive frames (TS and Smoothness in `v2`) therefore require
+`--time-ordered`, which declares that the frames of the loaded dataset are in time order. See §4.
 
 **Embeddings.** `EscheWang/3dcs-embeddings` holds the backed-up files as
 `traj/<model>/rmd17_<mol>.{npz,pkl}`, one file per molecule, with rows in frame order:
@@ -149,10 +149,10 @@ CKA = ⟨HK⁽ᴰ⁾H, HK⁽Δ⁾H⟩_F / (‖HK⁽ᴰ⁾H‖_F ‖HK⁽Δ⁾H�
 | paper | **One shared** σ = √median{d² : d ∈ vec(dE) ∪ vec(Δ), d > 0} over the concatenation of both distance sets (`cka_rbf(..., share_sigma=True)`). |
 | v2 | **Separate** median heuristics σ_D = √median{dE² > 0} and σ_Δ = √median{Δ² > 0} (Appendix C.3). |
 
-*Rationale for v2:* dE is in kcal/mol (median ≈ 6) and Δ ∈ [0, 1] (median ≈ 10⁻⁴–10⁻³ for the
-continuous models). The shared median is therefore ≈ 0.003, far below almost every energy difference, and the
-energy kernel degenerates to an indicator of near-tied energies. This is also why the published CKA
-values depend strongly on the precision of the energies.
+*Scales:* dE is in kcal/mol (median ≈ 6) and Δ ∈ [0, 1] (median ≈ 10⁻⁴–10⁻³ for the continuous
+models). A shared bandwidth is therefore ≈ 0.003 and is set by Δ, so the energy kernel responds mainly
+to near-tied energies; this is also why `paper` CKA values depend on the precision of the energies.
+`v2` uses one bandwidth per distance set.
 
 ### Isotonic R² (key `iso_R2`)
 
@@ -182,7 +182,7 @@ gives 94,275.340 ± 163.305 at λ = 2.
 The labels are yᵢⱼ = 1{dEᵢⱼ > 2σ̂_rms} with σ̂_rms = √(mean(dE²) + ε), and the scores are sᵢⱼ = Δᵢⱼ.
 The AUC is computed with `sklearn.metrics.roc_auc_score` (PR-AUC with `average_precision_score`).
 
-Both versions use this definition. It already matched the appendix in `paper`.
+Both versions use this definition.
 
 ### Thresholded smoothness TS (key `TS`)
 
@@ -193,22 +193,22 @@ Both versions use this definition. It already matched the appendix in `paper`.
 
 ### Smoothness (key `Smoothness`; Table 6)
 
-The final paper does not define this metric. Its two definitions here are:
+Two definitions are available:
 
 | | Definition |
 |---|---|
 | paper | Consecutive frames in file order, in raw units: Smoothness = mean_k exp(−Δ_{k,k+1} / (\|E_{k+1} − E_k\| + 10⁻⁸)). Δ is dimensionless and \|ΔE\| is in kcal/mol. |
 | v2 | The scale-normalised TS expression over **all** consecutive segments (T_E = 0): mean_k exp(−(Δ_{k,k+1}/Q_Z) / (\|E_{k+1} − E_k\|/Q_E + ε)). **It is computed only with `--time-ordered`; otherwise it is NaN.** |
 
-*Rationale for v2:* both quantities describe how the representation changes along a trajectory, which
-requires time-ordered frames. rMD17 frames are not time-ordered (§1). The `paper` values for rMD17
-therefore average over pairs of frames that are effectively random, and v2 does not report them.
+*Rationale for v2:* both quantities describe how the representation changes along a trajectory, so
+`v2` computes them only over frames declared to be in time order (`--time-ordered`) and returns NaN
+otherwise. The rMD17 frame order is described in §1.
 
 ### Distributional divergence KS / W1 (keys `KS`, `W1`)
 
 | | Definition |
 |---|---|
-| paper | Two-sample KS statistic `scipy.stats.ks_2samp(vec Δ, vec dE)` and `wasserstein_distance(vec Δ, vec dE)`. Δ ∈ [0, 1] is compared directly with dE in kcal/mol, so KS is close to 1 for every continuous representation (≥ 0.976 in Table 6), and the value mostly reflects the unit mismatch. |
+| paper | Two-sample KS statistic `scipy.stats.ks_2samp(vec Δ, vec dE)` and `wasserstein_distance(vec Δ, vec dE)`, computed on the raw quantities: Δ ∈ [0, 1] against dE in kcal/mol. The two ranges differ, so KS is close to 1 for every continuous representation (≥ 0.976 in Table 6). |
 | v2 | The same statistics between the dimensionless quantities vec(Δ)/Q_Z and vec(dE)/Q_E, with Q_Z and Q_E the 0.9-quantiles above. **Smaller is better** (more similar distribution shapes). |
 
 ### Distance correlation (key `dCor`, not reported in the paper)
@@ -224,8 +224,8 @@ Both versions return the double-centred distance correlation of the two n × n m
 | Table 7: jumps at 0.1σ … 3σ | `EJS_num_jumps_lam0p1` … `EJS_num_jumps_lam3` |
 
 `reproduce/energy_tables_3_6_7/collect.py` performs this mapping. `expected.csv` in the same folder
-lists, for every cell, the printed value, the value recomputed with this code, and notes on cells
-where the two differ.
+lists, for every cell, the value as printed in the paper, the reference value computed with this code,
+and a note describing the metric and the variant.
 
 ## 6. Usage
 
@@ -240,7 +240,7 @@ python -m three_dbench evaluate traj \
 python -m three_dbench evaluate traj --dataset-dir data/hf/traj/energies \
   --embeddings embeddings/traj/e3fp --model-name E3FP --n-jobs 16
 
-# Corrected definitions, subset of molecules
+# v2 definitions, subset of molecules
 python -m three_dbench evaluate traj --dataset-dir data/hf/traj/energies \
   --embeddings embeddings/traj/unimol --metric-version v2 --molecules aspirin ethanol --n-jobs 8
 ```

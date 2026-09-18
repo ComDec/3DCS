@@ -1,0 +1,14 @@
+# Environment used to compute the E3FP chirality fingerprints (python 3.10 or newer).
+#
+#   conda create -y -p ./env python=3.10
+#   ./env/bin/pip install -r requirements.txt
+#
+# e3fp pulls in sdaxen_python_utilities, smart_open and mmh3.
+e3fp==1.2.7
+rdkit==2024.9.6
+numpy<2
+# only for the Hugging Face --dataset forms (hf:<repo>[:<config>], hfdisk:<dir>, a
+# save_to_disk directory or a bare Hub id)
+# datasets
+# only for --verify
+# huggingface_hub

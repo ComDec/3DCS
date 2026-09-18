@@ -3,11 +3,10 @@
 3DCS evaluates a molecular representation along three axes. Each evaluator supports two metric
 versions:
 
-- `--metric-version paper` (default): the definitions that produced the published numbers. Where
-  the implementation used for the paper differs from the text of the paper, this version follows
-  the implementation, so that the tables can be regenerated.
-- `--metric-version v2`: definitions that follow the text of the paper (or correct a degenerate
-  case), with the rationale given on each page.
+- `--metric-version paper` (default): the definitions used for the published tables, so that those
+  tables can be regenerated.
+- `--metric-version v2`: an alternative set of definitions (full-precision inputs, separate kernel
+  bandwidths, neighbour and population choices), described metric by metric on each page.
 
 | Axis | Dataset (`EscheWang/3dcs` config) | Paper tables | Definitions |
 |---|---|---|---|

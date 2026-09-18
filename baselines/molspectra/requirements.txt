@@ -1,0 +1,21 @@
+# Environment used to run the MolSpectra extraction (python 3.10).
+# torch and the two PyG extensions need their own index URLs, see ENVIRONMENT.md:
+#   uv pip install torch==2.3.1 --index-url https://download.pytorch.org/whl/cu121
+#   uv pip install torch_scatter==2.1.2 torch_cluster==1.6.3 \
+#       -f https://data.pyg.org/whl/torch-2.3.1+cu121.html
+torch_geometric==2.6.1
+pytorch_lightning==2.3.3
+ase==3.23.0
+h5py==3.11.0
+numpy==1.26.3
+PyYAML>=6.0
+tqdm==4.66.5
+rdkit==2024.3.5
+scipy
+scikit-learn
+setuptools<81
+# only for the Hugging Face --dataset forms (hf:<repo>[:<config>], hfdisk:<dir>, a
+# save_to_disk directory or a bare Hub id)
+# datasets
+# only for --verify
+# huggingface_hub

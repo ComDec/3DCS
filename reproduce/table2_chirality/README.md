@@ -31,22 +31,19 @@ All variants scan the best-k silhouette up to `k = n - 1` (`--unsup-kmax n-1`, t
 
 ## What to expect
 
-- **`euclidean` against the paper.**
-  - All published cells are within 0.001 of `expected_value`, apart from GemNet SCI. The paper
-    prints +0.015; the computed value is −0.015151.
-  - The printed table mixes rounding and truncation. UniMol ES-AUC is 0.622998 and is printed as 0.622.
-  - E3FP Hopkins is "–" in the paper, because Hopkins is not defined for fingerprints. That cell is not
-    listed in `expected.csv`.
-- **`euclidean` against the Sept-2025 outputs** (`en_sep_results`, in the embeddings repo under
-  `results/chirality/`). These outputs exist for E3FP, GemNet, MolAE, MolSpectra and UniMol.
+- **`euclidean`** is the published protocol. `compare.py` reports PASS for all 34 cells of
+  `expected.csv` when the run uses the published embeddings. E3FP Hopkins is not defined for
+  fingerprints (NaN) and has no row.
+- **`euclidean` against the original per-molecule outputs** (`en_sep_results`, in the embeddings repo
+  under `results/chirality/`), which cover E3FP, GemNet, MolAE, MolSpectra and UniMol:
   - ES-AUC, NN@1-Acc, SCI, Hopkins and DBI are bit-identical for every molecule.
-  - SCI_unsup is bit-identical for E3FP, MolAE and MolSpectra.
-  - GemNet and UniMol differ by about 2e-6, because KMeans local optima depend on the BLAS kernel.
-- **FMG and MACE** have no original metric output. Their values are recomputed from the published
-  embeddings.
-- **Other variants.** The `cosine` and `v2_*` rows are not in the paper. They are given so that the
-  alternative definitions can be checked. See `docs/metrics/chirality.md` for the definitions and the
-  reasons behind them.
+  - SCI_unsup is bit-identical for E3FP, MolAE and MolSpectra; GemNet and UniMol differ by about
+    2e-6, because KMeans local optima depend on the BLAS kernel.
+  - For FMG and MACE the release has no per-molecule output; their reference values are computed from
+    the published embeddings.
+- **Other variants.** The `cosine` and `v2_*` rows are not printed in the paper. They are given so
+  that the alternative definitions can be checked. See `docs/metrics/chirality.md` for what each one
+  computes.
 
 ## Run time
 

@@ -15,8 +15,8 @@ jobs:
         with:
           python-version: "3.11"
       - run: pip install ruff
-      - run: ruff check src/ tests/ examples/ reproduce/
-      - run: ruff format --check src/ tests/ examples/ reproduce/
+      - run: ruff check src/ tests/ examples/ reproduce/ baselines/
+      - run: ruff format --check src/ tests/ examples/ reproduce/ baselines/
 
   test:
     runs-on: ubuntu-latest

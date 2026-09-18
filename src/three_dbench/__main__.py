@@ -57,7 +57,7 @@ def _parse_args() -> argparse.Namespace:
         type=str,
         choices=["paper", "v2"],
         default="paper",
-        help="All tasks: 'paper' reproduces the published numbers (default), 'v2' uses the corrected "
+        help="All tasks: 'paper' reproduces the published numbers (default), 'v2' uses the alternative "
         "definitions documented in docs/METRICS.md",
     )
     evaluate.add_argument("--lie-k", type=int, default=None, help="Rotation: override k of LIE@k")

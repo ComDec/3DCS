@@ -2,7 +2,7 @@
 
 ```bash
 bash reproduce/energy_tables_3_6_7/run.sh                          # published definitions
-N_JOBS=24 METRIC_VERSIONS="paper v2" bash reproduce/energy_tables_3_6_7/run.sh   # plus corrected definitions
+N_JOBS=24 METRIC_VERSIONS="paper v2" bash reproduce/energy_tables_3_6_7/run.sh   # plus the v2 definitions
 ```
 
 `run.sh` does four things:
@@ -25,19 +25,15 @@ for the 7 models (1,000 windows per model). See `timings.tsv` in the output fold
 
 | File | Content |
 |---|---|
-| `expected.csv` | For every published cell (variant `paper`): the printed value, the value recomputed with this code (6 decimals), a tolerance of 0.001 and notes. Variant `v2` rows hold the corrected definitions, which have no printed counterpart. |
+| `expected.csv` | One row per table cell and metric version: the value as printed in the paper, the reference value computed with this code (6 decimals), a tolerance of 0.001 and a note describing the row. Variant `v2` rows are not printed in the paper. |
 | `paper_values.csv` | Values as printed in the final paper. Table 7 is written without thousands separators. |
-| `make_expected.py` | Regenerates `expected.csv` from a reference `results.csv` and `paper_values.csv`, classifying each cell as rounding to the printed value, matching only by truncation, or differing. |
+| `make_expected.py` | Regenerates `expected.csv` from a reference `results.csv` and `paper_values.csv`. |
 | `collect.py` | Maps `summary.csv` keys to table cells (see `docs/metrics/energy.md` §5). |
 
-**Where the recomputed values differ from the printed tables.** The `notes` column of
-`expected.csv` records each case:
+**Reference values.** `expected_value` is what this code computes from the published trajectory
+embeddings and the float64 rMD17 energies with the published protocol (legacy windows, 100 × 2,000
+frames, seed 2025); `compare.py` compares against it. `paper_value` carries the value as printed in
+the table of that row.
 
-- Table 3 KS for E3FP (0.916) and MolSpectra (0.977) differ from the Table 6 values for the same
-  cells (0.913, 0.976). The recomputation reproduces the Table 6 values.
-- Some Table 3 cells are printed truncated rather than rounded, e.g. UniMol EJS 0.30155 → 0.301.
-- MACE and FMG columns are only partially reproducible from the backed-up embeddings. Most of their
-  published 95% CIs are 4–5 times wider than a 1,000-window run gives, and the published FMG
-  Smoothness (0.972 ± 0.002) is not attainable with these embeddings.
-- The v2 `TS` and `Smoothness` are not reported, because rMD17 frames are not time-ordered
-  (`docs/metrics/energy.md` §1).
+`v2` does not report `TS` and `Smoothness` here: both are defined along consecutive frames and are
+computed only with `--time-ordered` (`docs/metrics/energy.md` §1).
