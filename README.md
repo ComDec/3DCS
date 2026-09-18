@@ -82,7 +82,7 @@ python -m three_dbench evaluate rotation \
 Every evaluation writes a summary (`summary.csv`), per-molecule results and the configuration to
 `--output-dir` (default `results/<task>/<model>`, relative to the working directory or
 `$THREE_DBENCH_HOME`). `--metric-version paper` (default) uses the definitions behind the published
-numbers; `--metric-version v2` uses the corrected definitions described in
+numbers; `--metric-version v2` uses the alternative definitions described in
 [docs/METRICS.md](docs/METRICS.md). See [docs/USAGE.md](docs/USAGE.md) for all options, embedding
 layouts and the Python API.
 
@@ -92,11 +92,12 @@ A small demo with bundled GemNet fixtures:
 python examples/demo.py all
 ```
 
-## Reproducing the paper
+## Reproducing the tables
 
 Each table has a directory under [`reproduce/`](reproduce/README.md) with a `run.sh` (download,
-evaluation, `results.csv`) and an `expected.csv` (printed value, recomputed value with 6 decimals,
-tolerance and notes). `reproduce/compare.py` prints PASS/FAIL per cell.
+evaluation, `results.csv`) and an `expected.csv` (the value as printed in the paper, the reference
+value computed with this code at 6 decimals, a tolerance and notes). `reproduce/compare.py` compares
+a run against the reference values and prints PASS/FAIL per cell.
 
 | Table | Script | What it recomputes | Runtime (24 workers) |
 |---|---|---|---|
@@ -107,42 +108,33 @@ tolerance and notes). `reproduce/compare.py` prints PASS/FAIL per cell.
 Download sizes: rotation dataset ~7.5 GB, rotation GemNet embeddings ~5.2 GB, trajectory embeddings
 ~7 GB, chirality embeddings ~0.4 GB.
 
-### Status
+### Coverage
 
-"Reproducible" means that the published value is recomputed from released data, embeddings and code
-within the tolerance in `expected.csv`; the notes in each `expected.csv` list the known exceptions.
+Each `expected.csv` holds the reference values this code computes for the cells that the published
+artifacts cover:
 
-| Table | E3FP | GemNet | MolAE | MolSpectra | UniMol | FMG | MACE |
-|---|---|---|---|---|---|---|---|
-| 1 Geometry | pending (rotation embeddings) | full 16-shard run pending | pending (rotation embeddings) | pending (rotation embeddings) | pending (rotation embeddings) | not in table | not in table |
-| 2 Chirality (zero-shot) | reproducible | reproducible | reproducible | reproducible | reproducible | reproducible | reproducible |
-| 3 / 6 / 7 Energy (zero-shot) | reproducible | reproducible | reproducible | reproducible | reproducible | partially | partially |
-| 4 Chirality correlation | pending (evaluation code) | pending (evaluation code) | pending (evaluation code) | pending (evaluation code) | pending (evaluation code) | not in table | not in table |
-| 5 Chirality fine-tuning | not in table | pending | pending | pending | pending | pending | pending |
-| 8 / 9 rMD17 fine-tuning | pending | pending | pending | pending | pending | pending | pending |
+| Table | What the published artifacts cover |
+|---|---|
+| 1 Geometry | GemNet rotation embeddings (all 16 shards); for E3FP, MolAE, MolSpectra and UniMol, the per-molecule outputs of the original runs (`results/rotation/` in the embeddings repository) |
+| 2 Chirality (zero-shot) | chirality embeddings of all 7 models |
+| 3 / 6 / 7 Energy (zero-shot) | trajectory embeddings of all 7 models |
+| 4 Chirality correlation | the summary of the original run (`results/chirality/chirality_metrics_summary.csv`) and the embeddings of the earlier 15,218-conformer set (`chirality_legacy_15218/`); this release has no script for this table |
+| 5 / 8 / 9 Fine-tuning | this repository is the evaluation toolkit; fine-tuning code and checkpoints are not part of it |
 
 Further notes:
 
-- **Embedding extraction.** The published embeddings are the files used for the paper. Extraction
-  scripts are not part of this repository; the per-model status (known, partially known, unknown) is
-  listed in [docs/EMBEDDINGS.md](docs/EMBEDDINGS.md).
+- **Embedding extraction.** The published embeddings are the files used for the paper's evaluations.
+  [docs/EMBEDDINGS.md](docs/EMBEDDINGS.md) documents the format, array key, shape and provenance of
+  each file, and the E3FP fingerprint parameters.
 - **Table 1.** The published rows come from two runs: Spearman, Kendall, CKA, isotonic R² and
   Torsion-SP from a 10 % molecule sample (its key list is in `reproduce/table1_geometry/`), LIE@k and
   AS from all molecules. The per-molecule outputs of both runs for all five models are published in
-  the embeddings repository (`results/rotation/`). GemNet is the only model whose rotation embeddings
-  were kept, and a full 16-shard recomputation has not been run yet; `reproduce/table1_geometry/`
-  currently verifies one shard against the backed-up per-molecule outputs. In the full published run,
-  two molecules could not be processed and the embedding cursor was not advanced, so the molecules
-  after them in shards 1 and 2 (6.2 % of the total) were scored with embeddings shifted by 3 and 7
-  rows; this affects the LIE@k and AS columns. `--replicate-offset-drift` reproduces that behaviour.
-  See [docs/metrics/geometry.md](docs/metrics/geometry.md).
-- **Table 4.** The backed-up summary behind the Spearman, Kendall and CKA rows is published
-  (`results/chirality/chirality_metrics_summary.csv` in the embeddings repository); outputs for the
-  OPD rows were not found in our backups. The code for this table is not in the release.
-- **Fine-tuning (Tables 5, 8, 9).** Fine-tuning code and checkpoints are not part of this release.
-  Checkpoints for the chirality fine-tuning (Table 5) are being prepared and will be added later; no
-  checkpoints are planned for the rMD17 tables (8, 9). For the rMD17 tables, the train/test indices we
-  found correspond to the official split 01 ([splits/rmd17/](splits/rmd17/README.md)).
+  the embeddings repository (`results/rotation/`). LIE@k and AS of that full run correspond to
+  embedding rows shifted by 3 and 7 positions in parts of shards 1 and 2;
+  `--replicate-offset-drift` recomputes the metrics with the same indexing, and the regular columns
+  use the per-shard `offset` of the dataset. See [docs/metrics/geometry.md](docs/metrics/geometry.md).
+- **rMD17 splits.** The fine-tuning inputs for Tables 8 and 9 correspond to the official split 01
+  ([splits/rmd17/](splits/rmd17/README.md)).
 
 ## Dataset structure
 

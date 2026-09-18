@@ -18,9 +18,9 @@ of the rMD17 `.npz`, so these indices can be used directly on the HF data.
 
 - The zero-shot energy benchmark (Tables 3, 6 and 7) does **not** use these splits; it samples
   windows over all frames.
-- The fine-tuning inputs for Tables 8 and 9 that we found in our backups are exactly split **01**
-  (`index_train_01.csv` / `index_test_01.csv`, 1000/1000 frames, no validation split) for all ten
-  molecules. Fine-tuning code and checkpoints for rMD17 are not part of this repository.
+- The fine-tuning inputs for Tables 8 and 9 are split **01** (`index_train_01.csv` /
+  `index_test_01.csv`, 1000/1000 frames, no validation split) for all ten molecules. Fine-tuning code
+  and checkpoints for rMD17 are not part of this repository.
 
 ## SHA-256
 

@@ -87,7 +87,7 @@ Options (see [metrics/energy.md](metrics/energy.md)):
 | `--metric-version {paper,v2}` | `paper` | metric definitions |
 | `--molecules` | all | subset of rMD17 molecules |
 | `--energy-precision-check {error,warn,ignore}` | `error` | action when the energies look float32-quantized |
-| `--time-ordered` | off | treat the frames as a time series (enables the `v2` TS / smoothness metrics; rMD17 frames are not ordered) |
+| `--time-ordered` | off | treat the frames as a time series (enables the `v2` TS / smoothness metrics; rMD17 frames are not stored in time order) |
 | `--legacy-traj-len` | 100000 | trajectory length assumed by the `legacy` window scheme |
 | `--block-size` | 4096 | block size of the pairwise distance computation |
 | `--n-jobs` | 1 | worker processes (`-1` = all CPUs) |
@@ -125,11 +125,11 @@ Options:
 | `--extra-metrics` | off | also distance correlation, Mantel, stress, triplet order (slow) |
 | `--shards` | all shards with embeddings | shard ids to evaluate |
 | `--molecule-list FILE` | – | evaluate only these keys (one per line, `.gz` allowed), e.g. `reproduce/table1_geometry/sampled_molecules_seed2027.txt` |
-| `--sample-ratio R --sample-seed S` | – , 2027 | per-shard random sample (`default_rng(S + shard)`); does not regenerate the published 10 % sample |
+| `--sample-ratio R --sample-seed S` | – , 2027 | per-shard random sample (`default_rng(S + shard)`); for the molecules of the published 10 % sample use `--molecule-list` |
 | `--min-conformers` | 2 | skip molecules with fewer conformers |
 | `--max-keys` | – | evaluate at most N molecules (testing) |
 | `--n-jobs` | 1 | worker processes (Linux, fork) |
-| `--replicate-offset-drift` | off | by-shard only: also compute `<metric>__offset_drift` columns with the embedding shift of the published full run (Table 1 LIE@k / AS) |
+| `--replicate-offset-drift` | off | by-shard only: also compute `<metric>__offset_drift` columns with the embedding indexing of the original full run (Table 1 LIE@k / AS) |
 
 Outputs: `<model>_per_key.parquet` (one row per molecule and distance space), `summary.csv`
 (mean, median, number of finite values per metric) and `config.json` (definitions, selection counts,

@@ -2,7 +2,7 @@
 
 This page documents how `python -m three_dbench evaluate rotation` computes the geometry
 metrics, which definitions were used for the published Table 1, and what `--metric-version v2`
-changes. Chirality and energy metrics are described in [chirality.md](chirality.md) and
+computes. Chirality and energy metrics are described in [chirality.md](chirality.md) and
 [energy.md](energy.md); [../METRICS.md](../METRICS.md) is the index.
 
 ## Data and alignment
@@ -11,9 +11,8 @@ changes. Chirality and energy metrics are described in [chirality.md](chirality.
   conformers, 16 shards. Each row has `key`, `shard`, `n_conformers`, `offset`, `mol_blocks`
   and `torsion_deg`.
 - **`offset` is per shard.** It restarts at 0 in every shard, and the rows are ordered by the
-  shard id as a string (`0, 1, 10, 11, …, 15, 2, …, 9`). The initial release (0.1.0) sliced a single
-  flat array with this offset, which picks the wrong conformers for every shard other than 0.
-  The evaluator now supports three layouts:
+  shard id as a string (`0, 1, 10, 11, …, 15, 2, …, 9`), so it is an index into that shard's
+  embeddings, not into a single concatenated array. The evaluator supports three layouts:
 
   | `--layout` | Embeddings | Slicing |
   |---|---|---|
@@ -33,8 +32,8 @@ changes. Chirality and energy metrics are described in [chirality.md](chirality.
   runs (1,464,495 of 1,559,779 molecules qualify).
 - Molecules whose conformers cannot be merged for RMSD (different heavy-atom counts after
   `RemoveHs`) are skipped and listed in `config.json` (`failed_keys`). On the published data this
-  happens for `1-R5B2G8_6-R7B1G14_0_22` (shard 1) and, according to the backup outputs,
-  `6-R8B2G15_35-R2B1G6_0_36` (shard 2); the published full run also has no result for these two.
+  happens for `1-R5B2G8_6-R7B1G14_0_22` (shard 1) and `6-R8B2G15_35-R2B1G6_0_36` (shard 2); the
+  original full run has no result for these two either.
 - Aggregation: one value per molecule; `summary.csv` reports the mean and median over molecules
   with a finite value.
 
@@ -46,7 +45,7 @@ Outputs: `<model>_per_key.parquet` (one row per molecule and distance space), `s
 `--metric-version paper` is the default. The Python API also exposes `legacy` (the behaviour of
 `compute_all_geometry_metrics` in release 0.1.0) for comparison.
 
-| Metric (output key) | `paper` (published runs) | `v2` (paper text) | `legacy` (release 0.1.0) |
+| Metric (output key) | `paper` (published runs) | `v2` | `legacy` (release 0.1.0) |
 |---|---|---|---|
 | Spearman (`A1_spearman`) | Spearman of upper-triangular `D` vs `Δ` | same | same |
 | Kendall (`A2_kendall`) | as Spearman, **only for molecules with ≥ 11 conformers** (NaN otherwise) | all molecules with ≥ 2 pairs | all molecules |
@@ -63,38 +62,37 @@ preservation (not in Table 1; they dominate the runtime).
 
 Notes on `v2`:
 
-- **LIE**: the neighbour set of the paper definition does not contain the conformer itself.
-  With the conformer included, one of the k "neighbours" has distance 0 in both spaces, which
-  dilutes the score, and k = 10 exceeds the conformer count of most molecules (median 6).
-- **AS**: the appendix defines AS as the median representation change per angular increment along
-  the scan. `‖z_{i+1} − z_i‖` is in the units of the embedding, so AS values are comparable
+- **LIE**: the neighbour set follows the Table 1 caption and Appendix C.4, i.e. the k = 3 nearest
+  *other* conformers. In `paper` mode the set has k = 10 entries and contains the conformer itself,
+  whose distance is 0 in both spaces, and k = 10 exceeds the conformer count of most molecules
+  (median 6).
+- **AS**: Appendix C.4 defines AS as the median representation change per angular increment along
+  the scan. `‖z_{i+1} − z_i‖` is in the units of the embedding, so `v2` AS values are comparable
   between conformers of one model but not across models with different embedding scales.
   The wrap-around step (largest torsion back to the smallest) is excluded because conformers do not
   necessarily cover the full circle after redundancy removal.
-- **Isotonic R²**: the appendix fits `D` as a monotone function of `Δ`. The reverse fit rewards a
-  constant representation with R² = 1.
+- **Isotonic R²**: `v2` fits `D` as a monotone function of `Δ`, as in the appendix. Under the reverse
+  fit a constant representation scores R² = 1.
 - **Kendall**: no conformer-count threshold.
-- The `paper` column is kept as the default so that the published numbers can be regenerated.
+- `paper` is the default, so that the published numbers can be regenerated.
 
 ## Provenance of Table 1
 
-The scripts that produced Table 1 (`eval_geo_single.py`, `eval_geo_single_sup.py`) are not
-available. The `paper` definitions above were recovered by recomputing GemNet metrics from the
-published GemNet rotation embeddings and matching them, molecule by molecule, against the backed-up
-per-molecule outputs of the two original runs (the per-molecule JSON files are published in
-`EscheWang/3dcs-embeddings` under `results/rotation/`):
+Table 1 comes from two original runs. The `paper` definitions above reproduce their per-molecule
+outputs: GemNet metrics recomputed from the published GemNet rotation embeddings were matched,
+molecule by molecule, against those outputs, which are published in `EscheWang/3dcs-embeddings` under
+`results/rotation/`:
 
 | Table 1 rows | Original run | Molecules | Backup file |
 |---|---|---|---|
 | Spearman, Kendall, CKA, Isotonic R², Torsion-SP | `eval_geo_single.py --sample-ratio 0.1 --sample-seed 2027 --pairs-cap 100` | 146,389 (10 % sample) | `metrics_all_0.1_1.json.gz` (= `all_metric.csv`) |
 | LIE@k, AS | `eval_geo_single_sup.py --sample-ratio 1 --sample-seed 2027 --pairs-cap 100` | 1,464,493 | `metrics_sup_100.json.gz` |
 
-The 10 % sample cannot be regenerated from the seed because the sampling code is not available.
-Its molecule keys, read from the backup file, are distributed as
+The molecule keys of the 10 % sample, read from that output file, are distributed as
 [`reproduce/table1_geometry/sampled_molecules_seed2027.txt`](../../reproduce/table1_geometry/sampled_molecules_seed2027.txt)
-(146,389 keys in dataset order; use it with `--molecule-list`). `--sample-ratio/--sample-seed`
-implement a documented per-shard sampler (`numpy.random.default_rng(seed + shard)`), which does not
-reproduce that list.
+(146,389 keys in dataset order); pass them with `--molecule-list` to evaluate the same molecules.
+`--sample-ratio/--sample-seed` implement a per-shard sampler
+(`numpy.random.default_rng(seed + shard)`) that draws its own sample.
 
 ### Per-molecule agreement (GemNet, cosine)
 
@@ -115,42 +113,29 @@ coordinates with 4 decimals, so RMSD values differ from the original coordinates
 which can reorder near-tied pairs. LIE is sensitive for GemNet because some GemNet cosine distances
 are of the order of the 1e-12 stabiliser.
 
-Two further properties of the published runs were found this way:
+Two further properties of the original runs follow from the same comparison:
 
 - **Kendall** is finite for every sampled molecule with ≥ 11 conformers and NaN for every molecule
-  with ≤ 10 conformers (24,198 of 146,389 molecules have a value). The exact rule of the original
-  script is not recoverable; any pair-count threshold between 46 and 55 selects the same molecules.
-- **Embedding offsets in the full run.** In `metrics_sup_100.json.gz`, the molecules of shard 1 after
-  `1-R5B2G8_6-R7B1G14_0_22` (local offset 69,515, 3 conformers) and of shard 2 after
-  `6-R8B2G15_35-R2B1G6_0_36` (local offset 560,074, 7 conformers) were evaluated with embeddings
-  shifted back by 3 and 7 rows: the failing molecule was skipped without advancing the embedding
-  cursor. For GemNet this reproduces 530/530 and 67/67 sampled molecules after the failure in
-  shards 1 and 2 (LIE and AS), while the correctly aligned embeddings do not. 91,093 of the
-  1,464,493 molecules (6.2 %) are affected. The 10 % run is not affected (neither molecule is in the
-  sample), and E3FP is not affected (its fingerprints are stored per molecule).
-  `--replicate-offset-drift` (by-shard layout) recomputes all metrics with this shift and stores
-  them as `<metric>__offset_drift` columns; the regular columns always use aligned embeddings.
+  with ≤ 10 conformers (24,198 of 146,389 molecules have a value). Any pair-count threshold between
+  46 and 55 selects the same molecules.
+- **Embedding indexing in the full run.** In `metrics_sup_100.json.gz`, the values of the molecules
+  after `1-R5B2G8_6-R7B1G14_0_22` in shard 1 (local offset 69,515, 3 conformers) and after
+  `6-R8B2G15_35-R2B1G6_0_36` in shard 2 (local offset 560,074, 7 conformers) correspond to embedding
+  rows shifted back by 3 and 7 positions, i.e. by the conformer count of the molecule that the run
+  skipped. For GemNet, recomputing with that shift reproduces 530 of 530 and 67 of 67 sampled LIE and
+  AS values after those points, and indexing by `offset` does not. This covers 91,093 of the
+  1,464,493 molecules (6.2 %); it does not apply to the 10 % run (neither molecule is in its sample)
+  or to E3FP, whose fingerprints are stored per molecule.
+  `--replicate-offset-drift` (by-shard layout) recomputes all metrics with the same shift and writes
+  them as `<metric>__offset_drift` columns; the regular columns index the embeddings by the dataset
+  `offset`.
 
-For the four learned models, the effect on the published LIE@k and AS means can be estimated from
-the backup outputs by averaging over the unaffected molecules only (an estimate; exact aligned
-values require the embeddings, which are available for GemNet only):
+### Scope
 
-| Model | LIE@k published | LIE@k, unaffected molecules | AS published | AS, unaffected molecules |
-|---|---|---|---|---|
-| E3FP | 0.3238 | 0.3239 | 2.7576 | 2.7850 |
-| GemNet | 0.3901 | 0.3662 | 0.001825 | 0.001166 |
-| MolAE | 0.3489 | 0.3321 | 0.004755 | 0.004022 |
-| MolSpectra | 0.2379 | 0.2254 | 0.021443 | 0.020741 |
-| UniMol | 0.3059 | 0.2863 | 0.005987 | 0.005291 |
-
-(For E3FP the small differences reflect the subset only.)
-
-### Not reproduced
-
-- The Euclidean-space LIE@k values of the full run (not used in Table 1). In that run AS is the same
-  in both spaces (computed from the cosine distance).
-- Rotation embeddings for E3FP, UniMol, MolAE and MolSpectra are not available, so their Table 1
-  values can only be compared with the backed-up per-molecule outputs.
+- The Euclidean-space LIE@k values of the full run are not part of Table 1 and are not recomputed
+  here. In that run AS is the same in both spaces (computed from the cosine distance).
+- This release publishes rotation embeddings for GemNet; for E3FP, UniMol, MolAE and MolSpectra the
+  Table 1 rows are covered by the per-molecule outputs of the original runs.
 
 ## Runtime
 

@@ -9,7 +9,7 @@
 #
 # Environment variables (all optional):
 #   PYTHON=python  OUT=<this dir>/out  N_JOBS=16  MODELS="e3fp gemnet molae molspectra unimol fmg mace"
-#   METRIC_VERSIONS="paper"      (add v2 for the corrected definitions: METRIC_VERSIONS="paper v2")
+#   METRIC_VERSIONS="paper"      (add v2 for the v2 definitions: METRIC_VERSIONS="paper v2")
 #   ENERGY_DATASET_DIR=...       use an existing save_to_disk copy of traj_energies instead of downloading
 #   EMB_ROOT=...                 use existing embeddings: EMB_ROOT/<model>/rmd17_<mol>.{npz,pkl}
 #   EMB_LAYOUT=hf|nyubox         nyubox = original backup directory names (molspec, FMG)

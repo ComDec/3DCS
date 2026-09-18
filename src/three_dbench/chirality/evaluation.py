@@ -10,7 +10,7 @@ The per-molecule protocol and every metric definition are documented in
 
 ``metric_version``
     ``"paper"`` (default) reproduces the code path that produced the published numbers.
-    ``"v2"`` applies the corrected definitions listed in ``docs/metrics/chirality.md``
+    ``"v2"`` applies the alternative definitions listed in ``docs/metrics/chirality.md``
     (tie-aware NN1 restricted to points with a same-class partner, centroid DBI, explicit Hopkins
     population, best-k silhouette on the selected distance).
 
@@ -987,7 +987,7 @@ def evaluate_en_separation_from_counts(
         unsup_kmax: largest k for the best-k silhouette; ``None`` = ``n - 1`` (published setting).
         max_molecules: evaluate only the first N molecules (quick tests).
         distance: ``"euclidean"`` (published Table 2) or ``"cosine"``; ignored for fingerprints.
-        metric_version: ``"paper"`` (published definitions) or ``"v2"`` (corrected definitions).
+        metric_version: ``"paper"`` (published definitions) or ``"v2"`` (alternative definitions).
         n_jobs: worker processes (``-1`` = all CPUs). Results do not depend on ``n_jobs``.
         progress: show a tqdm progress bar.
 
