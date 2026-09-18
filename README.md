@@ -131,18 +131,31 @@ Further notes:
   AS from all molecules. The per-molecule outputs of both runs for all five models are published in
   the embeddings repository (`results/rotation/`). GemNet is the only model whose rotation embeddings
   were kept, and a full 16-shard recomputation has not been run yet; `reproduce/table1_geometry/`
-  currently verifies one shard against the backed-up per-molecule outputs. In the full published run,
-  two molecules could not be processed and the embedding cursor was not advanced, so the molecules
-  after them in shards 1 and 2 (6.2 % of the total) were scored with embeddings shifted by 3 and 7
-  rows; this affects the LIE@k and AS columns. `--replicate-offset-drift` reproduces that behaviour.
-  See [docs/metrics/geometry.md](docs/metrics/geometry.md).
+  currently verifies one shard against the backed-up per-molecule outputs. Use
+  `--replicate-offset-drift` to match the row alignment of the published run; see
+  [docs/metrics/geometry.md](docs/metrics/geometry.md) for the exact definitions used by each mode.
 - **Table 4.** The backed-up summary behind the Spearman, Kendall and CKA rows is published
   (`results/chirality/chirality_metrics_summary.csv` in the embeddings repository); outputs for the
   OPD rows were not found in our backups. The code for this table is not in the release.
-- **Fine-tuning (Tables 5, 8, 9).** Fine-tuning code and checkpoints are not part of this release.
-  Checkpoints for the chirality fine-tuning (Table 5) are being prepared and will be added later; no
-  checkpoints are planned for the rMD17 tables (8, 9). For the rMD17 tables, the train/test indices we
-  found correspond to the official split 01 ([splits/rmd17/](splits/rmd17/README.md)).
+- **Fine-tuning (Tables 5, 8, 9).** Fine-tuning code and checkpoints are not part of this release;
+  see [Recommended use](#recommended-use). The splits are released: the rMD17 tables use the official
+  split 01 ([splits/rmd17/](splits/rmd17/README.md)) and the chirality fine-tuning split is in
+  [splits/chirality_finetune/](splits/chirality_finetune/README.md).
+
+### Recommended use
+
+**3DCS is designed as a zero-shot benchmark, and that is the setting we support with released
+artifacts.** The datasets, the baseline embeddings and the evaluator above let a third party
+recompute the zero-shot tables end to end.
+
+We would not recommend building claims on cross-architecture *fine-tuned* comparisons. Each encoder
+favours its own optimizer, learning-rate range, schedule and regularization, and the readout head and
+training framework differ substantially between Uni-Mol/Mol-AE-style transformers, GemNet/MACE-style
+equivariant networks, and field-based models such as FMG. A single shared recipe under-trains some
+models and over-tunes others, so the resulting ranking reflects the per-model hyperparameter budget at
+least as much as the representation. A fine-tuned comparison worth trusting fixes an equal training
+budget per model, selects the optimizer and learning rate per model on a validation split (never on
+test), evaluates on the full test split, and reports several seeds.
 
 ## Dataset structure
 
