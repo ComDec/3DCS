@@ -38,26 +38,110 @@ a pickle of RDKit bit vectors; the others write an `.npz` with a single float32 
 ## Running one
 
 ```bash
-# the environment of that model, see <model>/ENVIRONMENT.md
+# in the environment of that model, see <model>/ENVIRONMENT.md
 python baselines/mace/extract_chirality.py \
     --dataset hf:EscheWang/3dcs:chirality \
     --out chirality_mace.npz \
     --device cuda --batch-size 1 --compress --verify
 ```
 
+The command for each of the seven, with the flags that model needs, is under
+[One command per model](#one-command-per-model).
+
 Common to all of them:
 
-- `--dataset` takes the Hugging Face config (`hf:EscheWang/3dcs:chirality`, or a
-  `save_to_disk` directory) or a pickle of RDKit molecules with one conformer each.
-- Each script prints the versions of every numerically relevant library, its own arguments,
-  the SHA-256 of the weights it loaded and the SHA-256 of the file it wrote.
+- `--dataset` takes the same input specification in every script, resolved by
+  `common.py` (`parse_dataset_spec`):
+
+  | `--dataset` | what it reads | needs |
+  |---|---|---|
+  | `hf:EscheWang/3dcs:chirality` | that Hub dataset and that config | `datasets` |
+  | `hf:EscheWang/3dcs`, `EscheWang/3dcs` | the same repository, config `chirality` | `datasets` |
+  | `hfdisk:data/hf/chirality`, `data/hf/chirality` | a `save_to_disk` directory of that config | `datasets` |
+  | `conformers.pkl` | a pickle of RDKit molecules: a list, or a dict of lists concatenated in insertion order | — |
+  | `lmdb:rotation_conformers_0.lmdb` | a rotation shard: one list of `(Mol, energy, torsion)` per key | `lmdb` |
+
+  Rows of the Hugging Face config are read in ascending `offset`, and each row's `offset` is
+  checked against the running conformer count, so `mol_blocks` concatenated that way is the
+  row order of the published embedding files. `python -m three_dbench download dataset --task
+  chirality` writes the `save_to_disk` directory that the fourth form reads.
+- `--limit N` stops after N conformers and `--start N` skips the first N, so a slice can be
+  run first; `--verify` then compares that slice (see `--verify-rows`).
 - `--verify [REFERENCE]` compares the file just written with a reference: with no argument,
   the published embedding of that model, downloaded from `EscheWang/3dcs-embeddings`
   (`pip install huggingface_hub`); otherwise `hub:<path in that repository>` or a local path.
   It prints both checksums, the elementwise differences, the per-row cosine similarity and
   the number of rows outside a few thresholds. It does not change the exit status.
+- `--verify-rows` says which rows of the reference the output covers. The default compares a
+  short output with the first rows of the reference (`prefix`) and a full output row by row
+  (`full`); `--verify-rows 2000:4000` (or `2000+`) compares against that slice, and
+  `--verify-rows @rows.npy` against the listed 0-based reference rows. The report then names
+  the selection and how many rows it compared.
+- Each script prints the versions of every numerically relevant library, its own arguments,
+  the SHA-256 of the weights it loaded and the SHA-256 of the file it wrote.
 - Rows are never skipped: a conformer that cannot be featurised is an error, not a silent
   shift of the row order.
+
+## One command per model
+
+Every command below reads the published dataset and verifies against the published
+embedding. The paths in angle brackets are the checkout, weight file and dictionary that
+`<model>/ENVIRONMENT.md` gives the download command and SHA-256 for. Add `--limit 2000` to
+any of them for a first run over a slice.
+
+```bash
+# E3FP            (CPU only)
+python baselines/e3fp/extract_chirality.py \
+    --dataset hf:EscheWang/3dcs:chirality \
+    --out sampled_chi.pkl --jobs 24 --verify
+
+# MACE
+python baselines/mace/extract_chirality.py \
+    --dataset hf:EscheWang/3dcs:chirality \
+    --out chirality.npz \
+    --device cuda --batch-size 1 --compress --verify
+
+# Uni-Mol
+python baselines/unimol/extract_chirality.py \
+    --dataset hf:EscheWang/3dcs:chirality \
+    --unimol-repo <Uni-Mol>/unimol \
+    --weights <mol_pre_no_h_220816.pt> \
+    --out chirality_unimol.npz \
+    --batch-size 256 --device cuda:0 --verify
+
+# Mol-AE
+python baselines/molae/extract_chirality.py \
+    --dataset hf:EscheWang/3dcs:chirality \
+    --weights <checkpoint_7_1000000.pt> \
+    --unimol-dir <Uni-Mol>/unimol/unimol \
+    --dict <Uni-Mol>/unimol/example_data/molecule/dict.txt \
+    --out molae_chirality.npz \
+    --batch-size 256 --device cuda:0 --num-workers 8 --verify
+
+# GemNet-Q
+python baselines/gemnet/extract_chirality.py \
+    --dataset hf:EscheWang/3dcs:chirality \
+    --gemnet-repo <gemnet_pytorch> \
+    --out gemnet_chirality.npz \
+    --batch-size 8 --device cuda --checkpoint-every 8000 --verify
+
+# FMG
+python baselines/fmg/extract_chirality.py \
+    --dataset hf:EscheWang/3dcs:chirality \
+    --fmg-repo <FMG> \
+    --checkpoint <model-120qm9_3rd_run.pt> \
+    --out chirality_fmg.npz \
+    --batch-size 32 --device cuda:0 --verify
+
+# MolSpectra      (architecture only; the checkpoint is supplied by the caller)
+python baselines/molspectra/extract_chirality.py \
+    --dataset hf:EscheWang/3dcs:chirality \
+    --repo <MolSpectra> \
+    --checkpoint <denoised-pcqm4mv2.ckpt> \
+    --out molspectra_chirality.npz \
+    --batch-size 128 --device cuda \
+    --arch torchmdnet --hydrogens remove --pool add --verify
+```
 
 The output goes straight into the evaluator:
 
@@ -71,11 +155,20 @@ python -m three_dbench evaluate chirality \
 
 ## Agreement with the published embeddings
 
+**Which input.** The published embedding files were computed from the source RDKit molecules,
+whose coordinates carry full float precision. The public `EscheWang/3dcs` dataset stores the
+same geometries as V2000 MOL blocks, which hold four decimals, so a run that starts from the
+dataset starts up to 5e-5 A away from the coordinates behind the published file. The first
+table below is the comparison from the full-precision molecules, the second is what the
+published dataset gives; [Input precision](#input-precision) is why they differ.
+
+### From the full-precision molecules, all 52,391 conformers
+
 Each script was run over all 52,391 conformers and the result compared with the published
-file of that model. The numbers below are that comparison. "Metrics" is the largest absolute
-difference over the six chirality metrics (ES-AUC, NN@1-Acc, SCI, SCI_unsup, Hopkins, DBI)
-computed by `three_dbench evaluate chirality --distance euclidean --metric-version paper`
-from the published file and from the regenerated file.
+file of that model. "Metrics" is the largest absolute difference over the six chirality
+metrics (ES-AUC, NN@1-Acc, SCI, SCI_unsup, Hopkins, DBI) computed by `three_dbench evaluate
+chirality --distance euclidean --metric-version paper` from the published file and from the
+regenerated file.
 
 | Model | Bytes identical | Per-row cosine | max abs diff | mean abs diff | Metrics (max abs diff) |
 |---|---|---|---|---|---|
@@ -115,6 +208,30 @@ Notes on individual rows:
   use; 108 of 52,391 entries are written differently by rdkit 2024.9.6 than in the published
   file (`[O][Na]` against `O[Na]`), and all 108 re-canonicalise to the same molecule.
 
+### From the published `mol_blocks`, first 2,000 conformers
+
+Each script over the first 2,000 conformers read from the published `mol_blocks`
+(`--dataset hf:EscheWang/3dcs:chirality --limit 2000 --verify`, or the `hfdisk:` form of a
+local copy of the same config), compared with the first 2,000 rows of the published file of
+that model — what `--verify` prints for a run an outside reader can reproduce from the
+released dataset. One A100-80GB, each model in the environment its `ENVIRONMENT.md` builds.
+
+| Model | Per-row cosine | max abs diff | mean abs diff |
+|---|---|---|---|
+| E3FP | 1,925 of 2,000 fingerprints bit-identical; Tanimoto mean 0.9946, min 0.511 | — | — |
+| GemNet-Q | mean 0.99999989, min 0.99999966; 0 rows < 1 − 1e−6 | 4.98e-03 | 3.35e-04 |
+| Uni-Mol | mean 0.9999965, min 0.9945; 32 rows < 1 − 1e−6 | 3.85e-01 | 2.44e-04 |
+| Mol-AE | mean 0.9999948, min 0.9921; 56 rows < 1 − 1e−6 | 4.36e-01 | 3.16e-04 |
+| MolSpectra | mean −0.184 (a different checkpoint, see the note above) | 3.76e+02 | 1.95e+01 |
+| MACE | mean 0.9999999995, min 0.9999999906; 0 rows < 1 − 1e−6 | 1.57e-03 | 1.33e-06 |
+| FMG | mean 0.9999861, min 0.9946; 9 rows < 0.999 | 7.02e-01 | 3.10e-04 |
+
+Over those 2,000 conformers (163 molecules), the chirality metrics computed from the
+regenerated file differ from the ones computed from the same rows of the published file by at
+most 1.9e-03 (ES-AUC), 2.4e-03 (NN@1-Acc), 1.8e-02 (DBI), 1.9e-04 (Hopkins) and 2.9e-03
+(SCI_unsup), taking the largest value over MACE, Uni-Mol, Mol-AE, GemNet-Q and FMG. A run from
+a pickle of the full-precision molecules gives the first table instead.
+
 None of the neural files are byte-identical, and none are expected to be: the forward passes
 run in float32 on the GPU, where the reduction order depends on the batch size, the library
 build and the device. Two runs of the same script on the same machine measure the size of
@@ -126,14 +243,26 @@ it by 2.0e-3.
 ## Input precision
 
 The `mol_blocks` of the Hugging Face dataset are V2000 MDL molblocks, which store coordinates
-with four decimals (at most 5e-5 A from the values in the source RDKit molecules). Models
-that build a neighbour graph with a hard cutoff, or that align a molecule onto its principal
-axes, can react to that rounding on a small fraction of conformers: measured per model, 0.4 %
-of rows for FMG (PCA axis swaps), 1.2 % for MolSpectra, 0.1 % for Uni-Mol, and a maximum
-difference of 3.8e-05 for MACE. The per-model `ENVIRONMENT.md` gives the numbers. ES-AUC,
-NN@1-Acc, SCI, SCI_unsup and Hopkins then move by less than 5.3e-4 in every case; DBI, a
+with four decimals (at most 5e-5 A from the values in the source RDKit molecules the published
+files were computed from). Models that build a neighbour graph with a hard cutoff, that encode
+pair distances, or that align a molecule onto its principal axes, can react to that rounding on
+a small fraction of conformers. Measured per model, running from the MOL blocks against running
+from the full-precision molecules:
+
+| Model | rows the rounding moves | reference |
+|---|---|---|
+| Mol-AE | 2.8 % of rows below cosine 1 − 1e−6, lowest 0.9921 | [molae/ENVIRONMENT.md](molae/ENVIRONMENT.md#input-precision) |
+| MolSpectra | 1.2 % of rows below cosine 0.9999 | [molspectra/ENVIRONMENT.md](molspectra/ENVIRONMENT.md#input-precision) |
+| FMG | 0.4 % of rows (PCA axis swaps), lowest cosine 0.9931 | [fmg/ENVIRONMENT.md](fmg/ENVIRONMENT.md#input-precision) |
+| Uni-Mol | 0.1 % of rows below cosine 0.9999, lowest 0.9945 | [unimol/ENVIRONMENT.md](unimol/ENVIRONMENT.md#input-precision) |
+| E3FP | 2,846 of 3,000 sampled fingerprints bit-identical | [e3fp/ENVIRONMENT.md](e3fp/ENVIRONMENT.md#input-precision) |
+| GemNet-Q | no row below cosine 1 − 1e−6; max abs diff 5.1e-04 | [gemnet/ENVIRONMENT.md](gemnet/ENVIRONMENT.md#input-precision) |
+| MACE | max abs diff 3.8e-05, per-row cosine at least 0.9999998 | [mace/ENVIRONMENT.md](mace/ENVIRONMENT.md#input-precision) |
+
+ES-AUC, NN@1-Acc, SCI, SCI_unsup and Hopkins then move by less than 5.3e-4 in every case; DBI, a
 ratio that is heavy-tailed over molecules, moves more (up to 4.4e-2 for FMG, where a single
-molecule of 3,903 accounts for most of the shift).
+molecule of 3,903 accounts for most of the shift). The source molecules are not part of the
+release; a run from the dataset is the reproducible path, and the numbers above are its cost.
 
 ## Other tracks
 

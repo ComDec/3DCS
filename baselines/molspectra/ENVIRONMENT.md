@@ -58,16 +58,19 @@ Differences from the upstream `requirements.txt`, and why:
 
 ```bash
 python extract_chirality.py \
-  --dataset  chirality_bench_conformers_noised_only_aslist.pkl \
+  --dataset  hf:EscheWang/3dcs:chirality \
   --repo     ./upstream \
   --checkpoint ./denoised-pcqm4mv2.ckpt \
   --out      molspectra_chirality.npz \
   --batch-size 128 --device cuda \
-  --arch torchmdnet --hydrogens remove --pool add
+  --arch torchmdnet --hydrogens remove --pool add --verify
 ```
 
-`--dataset` also accepts a `save_to_disk` directory of `EscheWang/3dcs` config `chirality`.
-
+`--dataset` takes the input specification shared by every script in `baselines/` (see the
+table in [`../README.md`](../README.md#running-one)): `hf:<repo>[:<config>]`, `hfdisk:<dir>` or a plain
+`save_to_disk` directory, a bare Hub dataset id, a pickle of RDKit molecules, or `lmdb:<file>`.
+`--limit`/`--start` run a slice of the conformers and `--verify-rows` says which rows of the
+reference that slice covers.
 ## What the flags mean
 
 * `--arch molspectra` builds MolSpectra's `TorchMD_ET`, which inserts a per-layer
@@ -93,10 +96,12 @@ output.
 
 ## Input precision
 
-The `mol_blocks` of the Hugging Face config store coordinates with four decimals. For a
-model with a 5 A cutoff that rounding can add or drop an edge: 1.19 % of rows have a per-row
-cosine below 0.9999 between a run from the MOL blocks and a run from the full-precision
-pickle of the same conformers. This applies to every cutoff-graph model here.
+The published embedding file and the agreement numbers in [`../README.md`](../README.md) were
+computed from the source RDKit molecules, whose coordinates carry full float precision. The public
+`EscheWang/3dcs` dataset stores those geometries as V2000 MOL blocks, which hold four decimals. For
+a model with a 5 A cutoff that rounding can add or drop an edge: 1.19 % of rows have a per-row
+cosine below 0.9999 between a run from the MOL blocks and a run from the full-precision molecules.
+This applies to every cutoff-graph model here.
 
 ## Cost
 

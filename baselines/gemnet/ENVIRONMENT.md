@@ -65,16 +65,20 @@ python extract_chirality.py \
     --batch-size 8 --device cuda --checkpoint-every 8000 --verify
 ```
 
-`--dataset` also takes a pickle of RDKit molecules or `lmdb:<file>`. Row order follows the
-dataset: for the Hugging Face config, rows are ordered by `offset` and then by position
-inside each row's `mol_blocks`. The script refuses to skip a conformer it cannot featurise
-rather than shifting the rows.
+`--dataset` takes the input specification shared by every script in `baselines/` (see the
+table in [`../README.md`](../README.md#running-one)): `hf:<repo>[:<config>]`, `hfdisk:<dir>` or a plain
+`save_to_disk` directory, a bare Hub dataset id, a pickle of RDKit molecules, or `lmdb:<file>`.
+`--limit`/`--start` run a slice of the conformers and `--verify-rows` says which rows of the
+reference that slice covers.
+
+Row order follows the dataset: for the Hugging Face forms, rows are ordered by `offset` and
+then by position inside each row's `mol_blocks`. The script refuses to skip a conformer it
+cannot featurise rather than shifting the rows.
 
 Options: `--pooling {mean,add}`, `--hydrogens {all,remove,keep}`, `--cutoff`, `--int-cutoff`,
 `--triplets-only`, `--round-coords`, `--fp16`, `--tf32`, `--start/--limit`, `--batch-size`,
 `--device`, `--seed`, `--num-threads`, `--oom-retries/--oom-wait` (retry a batch in smaller
 pieces after a CUDA OOM) and `--checkpoint-every` (write the partial `.npz` as it goes).
-
 ## Settings
 
 `Chem.RemoveAllHs` (heavy atoms only, `--hydrogens all`), edges within 5 A, quadruplet
@@ -91,11 +95,15 @@ CUDA / cuBLAS versions: the same code with TF32 on moves the output by `max|diff
 
 ## Input precision
 
-On the first 256 conformers, running from the Hugging Face dataset and from a full-precision
-pickle of the same molecules differ by `max|diff| = 2.4e-04`; the four-decimal coordinates of
-the MOL blocks are the whole of that difference (`--round-coords 4` on the pickle reproduces
-it).
-
+The published embedding file and the agreement numbers in [`../README.md`](../README.md) were
+computed from the source RDKit molecules, whose coordinates carry full float precision. The public
+`EscheWang/3dcs` dataset stores those geometries as V2000 MOL blocks, which hold four decimals.
+Over the first 2,000 conformers, a run from `hf:EscheWang/3dcs:chirality` and a run from the
+full-precision molecules, on the same machine in the same environment, differ by
+`max|diff| = 5.1e-04` and `mean|diff| = 1.9e-05`, per-row cosine at least 0.999999996, no row below
+1 - 1e-6. On the first 256 conformers the same comparison gives `max|diff| = 2.4e-04`, and
+`--round-coords 4` on the full-precision molecules reproduces it, so the rounding of the MOL blocks
+is the whole of the difference. GemNet-Q is, with MACE, among the least sensitive of the seven.
 ## Rotation shards
 
 The same settings cover the rotation track. Pass `--dataset lmdb:<shard>.lmdb`: each key of a

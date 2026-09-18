@@ -25,13 +25,18 @@ conda create -y -p ./env python=3.10
 
 ```bash
 python extract_chirality.py \
-    --dataset chirality_bench_conformers_noised_only_aslist.pkl \
+    --dataset hf:EscheWang/3dcs:chirality \
     --out sampled_chi.pkl --jobs 24 --verify
 ```
 
-`--dataset` also takes `hf:EscheWang/3dcs:chirality` or a `save_to_disk` directory of that
-config.
+`--dataset` takes the input specification shared by every script in `baselines/` (see the
+table in [`../README.md`](../README.md#running-one)): `hf:<repo>[:<config>]`, `hfdisk:<dir>` or a plain
+`save_to_disk` directory, a bare Hub dataset id, a pickle of RDKit molecules, or `lmdb:<file>`.
+`--limit`/`--start` run a slice of the conformers and `--verify-rows` says which rows of the
+reference that slice covers.
 
+E3FP reads bond orders and stereochemistry, so molecules are only used sanitised: a MOL block
+RDKit refuses to sanitise is an error here rather than a row read without sanitisation.
 ## Fingerprint parameters
 
 ```
@@ -53,10 +58,14 @@ container is rewritten.
 
 ## Input precision
 
-The `mol_blocks` of the Hugging Face config store coordinates with four decimals. E3FP bins
-interatomic distances, so that rounding can move a shell boundary: over 3,000 sampled
-conformers, fingerprints computed from the MOL blocks agree with the published file for 2,846
-of 3,000. Start from a pickle of the molecules when the bits have to match exactly.
+The published fingerprint file and the agreement numbers in [`../README.md`](../README.md) were
+computed from the source RDKit molecules, whose coordinates carry full float precision. The public
+`EscheWang/3dcs` dataset stores those geometries as V2000 MOL blocks, which hold four decimals, so
+a run from `--dataset hf:EscheWang/3dcs:chirality` starts up to 5e-5 A away from the coordinates
+behind the published file. E3FP bins interatomic distances, so that rounding can move a shell
+boundary: over 3,000 sampled conformers, fingerprints computed from the MOL blocks agree with the
+published file for 2,846 of 3,000. Start from a pickle of the molecules when the bits have to match
+exactly.
 
 ## Cost
 

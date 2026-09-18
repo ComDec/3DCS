@@ -49,11 +49,15 @@ python extract_chirality.py \
     --device cuda --batch-size 1 --compress --verify
 ```
 
-`--dataset` also accepts a local pickle of RDKit molecules or `hfdisk:<save_to_disk dir>`.
-Other switches: `--model`, `--aggregation mean|sum`, `--num-layers`, `--full-features`,
-`--conf-id`, `--dtype`, `--limit`. The script prints the versions of every numerically
-relevant package and the sha256 of the file it wrote.
+`--dataset` takes the input specification shared by every script in `baselines/` (see the
+table in [`../README.md`](../README.md#running-one)): `hf:<repo>[:<config>]`, `hfdisk:<dir>` or a plain
+`save_to_disk` directory, a bare Hub dataset id, a pickle of RDKit molecules, or `lmdb:<file>`.
+`--limit`/`--start` run a slice of the conformers and `--verify-rows` says which rows of the
+reference that slice covers.
 
+Other switches: `--model`, `--aggregation mean|sum`, `--num-layers`, `--full-features`,
+`--conf-id`, `--dtype`. The script prints the versions of every numerically relevant package
+and the sha256 of the file it wrote.
 ## Settings
 
 `mace_mp(model="medium")` (MACE-MP-0 medium, 128 channels, two interaction layers) ->
@@ -71,10 +75,12 @@ magnitudes.
 
 ## Input precision
 
-The `mol_blocks` of the Hugging Face config store coordinates with four decimals. Atom order
-and symbols are identical to the source pickle and coordinates differ by at most 5e-05 A;
-embeddings extracted through the Hugging Face path differ from the published file by at most
-3.78e-05, per-row cosine at least 0.9999998.
+The published embedding file and the agreement numbers in [`../README.md`](../README.md) were
+computed from the source RDKit molecules, whose coordinates carry full float precision. The public
+`EscheWang/3dcs` dataset stores those geometries as V2000 MOL blocks, which hold four decimals. Atom
+order and symbols are identical either way and coordinates differ by at most 5e-05 A; embeddings
+extracted through the Hugging Face path differ from the published file by at most 3.78e-05, per-row
+cosine at least 0.9999998. MACE is the least sensitive of the seven to this rounding.
 
 ## Cost
 

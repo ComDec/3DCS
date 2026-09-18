@@ -51,7 +51,9 @@ for shard in range(16):
 
 [`baselines/`](../baselines/README.md) holds a worked version of this for each of the seven
 baseline models on the chirality set: input handling, the model call and the write, with the
-environment each one needs.
+environment each one needs. All seven read the dataset through the same `--dataset` syntax
+(`hf:<repo>[:<config>]`, `hfdisk:<dir>` or a `save_to_disk` directory, a bare Hub id, a pickle of
+RDKit molecules, or `lmdb:<file>`).
 
 Check alignment before evaluating: for flat arrays the number of rows must equal the sum of
 `n_conformers`; for by-shard files, each file must have `max(offset + n_conformers)` rows of its shard.
@@ -107,6 +109,7 @@ above. Each script drives an upstream checkout that you install yourself — no 
 weights are redistributed — and `baselines/<model>/ENVIRONMENT.md` gives the upstream repository and
 commit, the weight file with its SHA-256 and where to download it, and the exact install commands.
 `--verify` compares a freshly extracted file with the published one and prints the checksums, the
-elementwise differences and the per-row cosine similarity;
+elementwise differences and the per-row cosine similarity — over the rows the run covers, so a run
+with `--limit` on a slice is compared with the matching rows of the published file;
 [`baselines/README.md`](../baselines/README.md) tabulates those numbers for a full run of every
 script.

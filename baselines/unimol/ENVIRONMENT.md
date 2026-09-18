@@ -53,22 +53,24 @@ resolved environment is in `requirements.txt`.
 
 ```bash
 python extract_chirality.py \
-    --dataset EscheWang/3dcs \
+    --dataset hf:EscheWang/3dcs:chirality \
     --unimol-repo /path/to/Uni-Mol/unimol \
     --weights /path/to/mol_pre_no_h_220816.pt \
     --out chirality_unimol.npz \
     --batch-size 256 --device cuda:0 --verify
 ```
 
-`--dataset` accepts a Hugging Face dataset id (config `chirality`), a `save_to_disk`
-directory of that config, or a pickle of RDKit molecules (a list, or a dict whose values are
-lists, concatenated in insertion order). Other options: `--dict`, `--num-workers`, `--seed`,
-`--work-dir`, `--keep-work`.
+`--dataset` takes the input specification shared by every script in `baselines/` (see the
+table in [`../README.md`](../README.md#running-one)): `hf:<repo>[:<config>]`, `hfdisk:<dir>` or a plain
+`save_to_disk` directory, a bare Hub dataset id, a pickle of RDKit molecules, or `lmdb:<file>`.
+`--limit`/`--start` run a slice of the conformers and `--verify-rows` says which rows of the
+reference that slice covers.
+
+Other options: `--dict`, `--num-workers`, `--seed`, `--work-dir`, `--keep-work`.
 
 The script prints the versions of Python, PyTorch, Uni-Core, NumPy, RDKit and LMDB, the GPU
 name, the sha256 of the weights and of `dict.txt`, the full Uni-Mol command line it parses,
 and the shape and sha256 of the output.
-
 ## Settings
 
 The command line the script parses is
@@ -83,11 +85,12 @@ of the input is preserved.
 
 ## Input precision
 
-The `mol_blocks` of the Hugging Face config store coordinates with four decimals. Running
-the script on the full-precision RDKit pickle of the same conformers instead gives a mean
-per-row cosine of 0.9999994 between the two runs, with 62 conformers of 52,391 below 0.9999
-and a worst case of 0.9945 (a 65-atom molecule); each chirality metric moves by less than
-0.0002.
+The published embedding file and the agreement numbers in [`../README.md`](../README.md) were
+computed from the source RDKit molecules, whose coordinates carry full float precision. The public
+`EscheWang/3dcs` dataset stores those geometries as V2000 MOL blocks, which hold four decimals.
+Running the script on the full-precision molecules instead of the MOL blocks gives a mean per-row
+cosine of 0.9999994 between the two runs, with 62 conformers of 52,391 below 0.9999 and a worst
+case of 0.9945 (a 65-atom molecule); each chirality metric moves by less than 0.0002.
 
 ## Cost
 

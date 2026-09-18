@@ -109,10 +109,12 @@ python baselines/mace/extract_chirality.py \
   --device cuda --batch-size 1 --compress --verify
 ```
 
-Each script takes the Hugging Face config or a pickle of RDKit molecules, prints the versions and
-checksums of everything it used, and writes the documented array key. `--verify` compares the
-result with the published file of that model and prints the checksums, the elementwise differences
-and the per-row cosine similarity. No third-party code or weights are redistributed: every model
+All seven take the same `--dataset` values — `hf:<repo>[:<config>]`, `hfdisk:<dir>` or a plain
+`save_to_disk` directory, a bare Hub dataset id, a pickle of RDKit molecules, or `lmdb:<file>` —
+print the versions and checksums of everything they used, and write the documented array key.
+`--verify` compares the result with the published file of that model and prints the checksums, the
+elementwise differences and the per-row cosine similarity; with `--limit`/`--start` it compares the
+rows the run covers (`--verify-rows`). No third-party code or weights are redistributed: every model
 directory has an `ENVIRONMENT.md` with the upstream repository and commit, the weight file with its
 SHA-256 and where to download it, and the exact install commands.
 [baselines/README.md](baselines/README.md) tabulates, per model, the output dimension, array key,

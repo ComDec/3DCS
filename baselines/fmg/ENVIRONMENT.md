@@ -23,7 +23,22 @@ nor the FMG weights are redistributed here.
 | file | `model-120qm9_3rd_run.pt` (FMG QM9 3D U-Net) |
 | size | 1,246,683,351 bytes |
 | sha256 | `f55ec38f2b6c20ad3a2e4e6287efb77af3901d46548449543bdbab33357d2afa` |
-| source | the FMG authors (the upstream repository does not host it) |
+| source | the Google Drive folder linked from the upstream FMG README ("Pre-trained model weights") |
+| Drive folder | <https://drive.google.com/drive/folders/1XpOfCPRvPu22dSgbWgfGRF0Lul7ygdC7> |
+| Drive file id | `1g-EJOtJpY0eRx2UlEmvvcBM0LIrKq0NP` |
+
+```bash
+pip install gdown
+# the whole folder (three QM9 runs, ~3.5 GB), or just the file this script uses:
+gdown --folder https://drive.google.com/drive/folders/1XpOfCPRvPu22dSgbWgfGRF0Lul7ygdC7 -O fmg_weights
+gdown 1g-EJOtJpY0eRx2UlEmvvcBM0LIrKq0NP -O model-120qm9_3rd_run.pt
+sha256sum model-120qm9_3rd_run.pt
+# f55ec38f2b6c20ad3a2e4e6287efb77af3901d46548449543bdbab33357d2afa
+```
+
+The download needs no Google account. The folder also holds `model-120qm9_1st_run.pt` and
+`model-120qm9_2nd_run.pt`, which are different runs of the same architecture; the published
+embeddings come from the third.
 
 The script reads the 226 tensors of the `ema` state dict whose names start with
 `online_model.model.`.
@@ -41,7 +56,9 @@ conda create -y -p ./env python=3.10
 ```
 
 Resolved versions used for the numbers in [`../README.md`](../README.md): python 3.10.21,
-torch 2.0.0+cu118 (cuDNN 8700), numpy 1.26.4, rdkit 2024.9.6, einops 0.7.0, datasets 4.0.0.
+torch 2.0.0+cu118 (cuDNN 8700), numpy 1.26.4, rdkit 2024.9.6, einops 0.7.0, datasets 4.0.0,
+tqdm 4.70.1 (`datasets` 4.0.0 requires `tqdm>=4.66.3`, which is the floor `requirements.txt`
+carries).
 
 RDKit must be 2023 or newer to read the released conformer pickles (they carry RDKit pickle
 version 16); the `rdkit-pypi==2022.9.5` of the upstream `requirements.txt` raises
@@ -78,12 +95,14 @@ further from the published file, which was computed with the library defaults.
 
 ## Input precision
 
-The `mol_blocks` of the Hugging Face config store coordinates with four decimals. FMG aligns
-each conformer onto its PCA axes, and for 216 of the 52,391 conformers (0.41 %) that
-rounding is enough to swap near-degenerate principal axes, which rotates the field (lowest
-per-row cosine 0.9931 against the run from the full-precision molecules). The remaining
-99.6 % agree to the 1e-6 level, and the chirality metrics move by at most 5.3e-4. Start from
-a pickle of the molecules for the closest agreement.
+The published embedding file and the agreement numbers in [`../README.md`](../README.md) were
+computed from the source RDKit molecules, whose coordinates carry full float precision. The public
+`EscheWang/3dcs` dataset stores those geometries as V2000 MOL blocks, which hold four decimals. FMG
+aligns each conformer onto its PCA axes, and for 216 of the 52,391 conformers (0.41 %) that rounding
+is enough to swap near-degenerate principal axes, which rotates the field (lowest per-row cosine
+0.9931 against the run from the full-precision molecules). The remaining 99.6 % agree to the 1e-6
+level, and the chirality metrics move by at most 5.3e-4. Start from a pickle of the molecules for
+the closest agreement.
 
 ## Cost
 
