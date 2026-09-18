@@ -422,7 +422,7 @@ def _run_rows(records: list[dict], *, n_jobs: int, chunk_size: int, progress: bo
 
 
 def _offset_drift_records(selected: pd.DataFrame, failed_keys: set[str]) -> tuple[list[dict], dict]:
-    """Rows after a failed molecule of the same shard, with the shifted per-shard offset."""
+    """Rows after a skipped molecule of the same shard, with the shifted per-shard offset."""
     records: list[dict] = []
     info: dict[str, Any] = {}
     for shard, grp in selected.groupby("shard", sort=False):
@@ -526,13 +526,12 @@ def evaluate_rotation_embeddings(
     Molecules whose RMSD matrix cannot be computed (e.g. conformers with different heavy-atom
     counts after ``RemoveHs``) are skipped and listed in ``config["selection"]["failed_keys"]``.
 
-    ``replicate_offset_drift`` (by-shard layout only) additionally recomputes every metric as the
-    published full geometry run did (Table 1 LIE@k / AS rows): in that run a molecule that failed
-    was skipped without advancing the per-shard embedding cursor, so every later molecule of the
-    same shard was evaluated with embeddings shifted back by the failed molecule's conformer count.
-    These values are stored in extra columns ``<metric>__offset_drift``; the regular columns always
-    use correctly aligned embeddings. Use it with complete shards, since only failures among the
-    evaluated molecules are detected.
+    ``replicate_offset_drift`` (by-shard layout only) additionally recomputes every metric with the
+    embedding indexing of the original full geometry run (Table 1 LIE@k / AS rows): there, the rows
+    of every molecule after a skipped one of the same shard are shifted back by the skipped
+    molecule's conformer count. These values are stored in extra columns ``<metric>__offset_drift``;
+    the regular columns index the embeddings by the dataset ``offset``. Use it with complete shards,
+    since only skipped molecules among the evaluated ones are detected.
 
     Returns a dict with ``per_key`` (DataFrame, one row per key and distance space),
     ``summary`` (DataFrame) and ``config`` (dict). When ``output_dir`` is given, writes

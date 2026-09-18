@@ -10,7 +10,7 @@ Rows are matched on (table, model, metric, variant). Status per expected row:
   PASS         |value - expected_value| <= tolerance (tolerance defaults to 0.001)
   FAIL         the difference exceeds the tolerance, or the value is not finite
   MISSING      no result row (e.g. a model whose embeddings are not available); a failure with --strict
-  NO_EXPECTED  expected_value is empty (reference value not available yet); never a failure
+  NO_EXPECTED  expected_value is empty (this file holds no reference value for the row); never a failure
 Exit code: 0 if no FAIL, 1 if any FAIL, 2 if no row could be compared.
 """
 

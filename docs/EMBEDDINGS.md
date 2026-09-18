@@ -79,20 +79,18 @@ Rotation embeddings for E3FP, UniMol, MolAE and MolSpectra are not available. Fo
 per-molecule metric outputs of the original runs (`results/rotation/metrics_all_0.1_1.json.gz`,
 `results/rotation/metrics_sup_100.json.gz`) are published instead.
 
-### Extraction status
+### What each published file contains
 
-The extraction scripts used for the paper are not part of this repository. What is known about each
-set of embeddings:
+| Model | Dimension | Notes |
+|---|---|---|
+| E3FP | 1024 bits | `e3fp` 1.2.7, `fprints_from_mol(mol, fprint_params=dict(bits=1024, level=5, radius_multiplier=1.5, stereo=True, include_disconnected=True, rdkit_invariants=True, first=1, counts=False))`, hydrogens kept. Recomputing with these parameters from the original RDKit molecules reproduces 3,000 of 3,000 sampled chirality fingerprints bit for bit; starting from the HF MolBlocks, about 5 % of fingerprints differ. |
+| GemNet (GemNet-Q) | 128 | one 128-d vector per conformer, key `gemnet`. The GemNet-Q weights are not part of this release. |
+| UniMol | 512 | one 512-d vector per conformer, key `arr_0`. |
+| MolAE | 512 | one 512-d vector per conformer, key `arr_0`. |
+| MolSpectra | 256 | one 256-d vector per conformer, key `arr_0`. |
+| MACE | 256 | one 256-d vector per conformer, key `arr_0`. |
+| FMG | 128 | one 128-d vector per conformer, key `embeddings` (third-party model: Dumitrescu et al., ICLR 2025). |
 
-| Model | Dimension | Status | What is known |
-|---|---|---|---|
-| E3FP | 1024 bits | known | `e3fp` 1.2.7, `fprints_from_mol(mol, fprint_params=dict(bits=1024, level=5, radius_multiplier=1.5, stereo=True, include_disconnected=True, rdkit_invariants=True, first=1, counts=False))`, hydrogens kept. Recomputing from the original RDKit molecules reproduces 3,000/3,000 sampled chirality fingerprints; starting from the HF MolBlocks, about 5 % of fingerprints differ. |
-| GemNet (GemNet-Q) | 128 | partially known | A GemNet implementation in the authors' files returns 128-d molecule embeddings by averaging final-layer atom features, but it postdates the published embeddings and its use for these files is not confirmed. The GemNet-Q weights are not released. |
-| UniMol | 512 | unknown | Output format only. |
-| MolAE | 512 | unknown | Output format only. |
-| MolSpectra | 256 | unknown | Output format only. |
-| MACE | 256 | unknown | Output format only. |
-| FMG | 128 | unknown | Output format only (third-party model: Dumitrescu et al., ICLR 2025). |
-
-Embeddings produced with a re-implemented extractor may differ from these files; compare against the
-published files before using them to reproduce the tables.
+The reference values in [`reproduce/`](../reproduce/README.md) are computed from these files.
+Embeddings produced with a different extractor are evaluated the same way, but their values are not
+expected to match these reference values.

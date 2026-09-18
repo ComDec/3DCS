@@ -1,414 +1,414 @@
 table,model,metric,variant,paper_value,expected_value,tolerance,notes
-3,E3FP,Spearman,paper,0.026,0.026068,0.001,recomputed value rounds to the printed value
-3,E3FP,Kendall,paper,0.018,0.018248,0.001,recomputed value rounds to the printed value
-3,E3FP,CKA,paper,0.011,0.010683,0.001,recomputed value rounds to the printed value
-3,E3FP,isoR2,paper,0.002,0.001507,0.001,recomputed value rounds to the printed value
-3,E3FP,EJS,paper,0.184,0.183794,0.001,recomputed value rounds to the printed value
-3,E3FP,EJS_ROCAUC,paper,0.531,0.531304,0.001,recomputed value rounds to the printed value
-3,E3FP,TS,paper,0.385,0.385347,0.001,recomputed value rounds to the printed value
-3,E3FP,KS,paper,0.916,0.913498,0.001,recomputed value does not match the printed value; Table 3 prints 0.916 while Table 6 prints 0.913 for the same mean; the Table 3 value is carried over from the submission draft and is not produced by any backed-up run
-3,FMG,Spearman,paper,0.015,0.013975,0.001,recomputed value does not match the printed value; MACE/FMG energy columns are only partially reproducible from the backed-up embeddings; no backed-up run reproduces this published value
-3,FMG,Kendall,paper,0.009,0.009321,0.001,recomputed value rounds to the printed value; Table 3 prints 0.009 while Table 6 prints 0.010 for the same mean
-3,FMG,CKA,paper,0.011,0.011691,0.001,printed value is the 3-dp truncation (not rounding) of the recomputed value; Table 3 prints 0.011 while Table 6 prints 0.012 for the same mean
-3,FMG,isoR2,paper,0.001,0.000822,0.001,recomputed value rounds to the printed value
-3,FMG,EJS,paper,0.269,0.266977,0.001,recomputed value does not match the printed value; MACE/FMG energy columns are only partially reproducible from the backed-up embeddings; no backed-up run reproduces this published value
-3,FMG,EJS_ROCAUC,paper,0.517,0.515996,0.001,recomputed value does not match the printed value; MACE/FMG energy columns are only partially reproducible from the backed-up embeddings; no backed-up run reproduces this published value
-3,FMG,TS,paper,0.582,0.582899,0.001,printed value is the 3-dp truncation (not rounding) of the recomputed value; Table 3 prints 0.582 while Table 6 prints 0.583 for the same mean
-3,FMG,KS,paper,0.999,0.999827,0.001,printed value is the 3-dp truncation (not rounding) of the recomputed value; Table 3 prints 0.999 while Table 6 prints 1.000 for the same mean
-3,GemNet,Spearman,paper,0.078,0.077526,0.001,recomputed value rounds to the printed value
-3,GemNet,Kendall,paper,0.052,0.051807,0.001,recomputed value rounds to the printed value
-3,GemNet,CKA,paper,0.016,0.016325,0.001,recomputed value rounds to the printed value
-3,GemNet,isoR2,paper,0.013,0.013470,0.001,recomputed value rounds to the printed value
-3,GemNet,EJS,paper,0.356,0.355988,0.001,recomputed value rounds to the printed value
-3,GemNet,EJS_ROCAUC,paper,0.592,0.591777,0.001,recomputed value rounds to the printed value
-3,GemNet,TS,paper,0.444,0.443715,0.001,recomputed value rounds to the printed value
-3,GemNet,KS,paper,0.998,0.998367,0.001,recomputed value rounds to the printed value
-3,MACE,Spearman,paper,0.236,0.236143,0.001,recomputed value rounds to the printed value
-3,MACE,Kendall,paper,0.159,0.159662,0.001,printed value is the 3-dp truncation (not rounding) of the recomputed value; Table 3 prints 0.159 while Table 6 prints 0.160 for the same mean
-3,MACE,CKA,paper,0.017,0.017391,0.001,recomputed value rounds to the printed value
-3,MACE,isoR2,paper,0.080,0.080723,0.001,printed value is the 3-dp truncation (not rounding) of the recomputed value; Table 3 prints 0.080 while Table 6 prints 0.083 for the same mean
-3,MACE,EJS,paper,0.578,0.572063,0.001,recomputed value does not match the printed value; MACE/FMG energy columns are only partially reproducible from the backed-up embeddings; no backed-up run reproduces this published value
-3,MACE,EJS_ROCAUC,paper,0.764,0.760630,0.001,recomputed value does not match the printed value; MACE/FMG energy columns are only partially reproducible from the backed-up embeddings; no backed-up run reproduces this published value
-3,MACE,TS,paper,0.424,0.424343,0.001,recomputed value rounds to the printed value
-3,MACE,KS,paper,0.999,0.999448,0.001,recomputed value rounds to the printed value
-3,MolAE,Spearman,paper,0.039,0.038868,0.001,recomputed value rounds to the printed value
-3,MolAE,Kendall,paper,0.026,0.025930,0.001,recomputed value rounds to the printed value
-3,MolAE,CKA,paper,0.024,0.024077,0.001,recomputed value rounds to the printed value
-3,MolAE,isoR2,paper,0.003,0.002824,0.001,recomputed value rounds to the printed value
-3,MolAE,EJS,paper,0.294,0.293714,0.001,recomputed value rounds to the printed value
-3,MolAE,EJS_ROCAUC,paper,0.545,0.545296,0.001,recomputed value rounds to the printed value
-3,MolAE,TS,paper,0.346,0.346272,0.001,recomputed value rounds to the printed value
-3,MolAE,KS,paper,0.998,0.998199,0.001,recomputed value rounds to the printed value
-3,MolSpectra,Spearman,paper,0.023,0.022909,0.001,recomputed value rounds to the printed value
-3,MolSpectra,Kendall,paper,0.015,0.015282,0.001,recomputed value rounds to the printed value
-3,MolSpectra,CKA,paper,0.006,0.006444,0.001,recomputed value rounds to the printed value
-3,MolSpectra,isoR2,paper,0.001,0.001481,0.001,recomputed value rounds to the printed value
-3,MolSpectra,EJS,paper,0.271,0.270563,0.001,recomputed value rounds to the printed value
-3,MolSpectra,EJS_ROCAUC,paper,0.526,0.526507,0.001,printed value is the 3-dp truncation (not rounding) of the recomputed value; Table 3 prints 0.526 while Table 6 prints 0.527 for the same mean
-3,MolSpectra,TS,paper,0.409,0.408949,0.001,recomputed value rounds to the printed value
-3,MolSpectra,KS,paper,0.977,0.976430,0.001,recomputed value does not match the printed value; Table 3 prints 0.977 while Table 6 prints 0.976 for the same mean; the Table 3 value is carried over from the submission draft and is not produced by any backed-up run
-3,UniMol,Spearman,paper,0.043,0.042610,0.001,recomputed value rounds to the printed value
-3,UniMol,Kendall,paper,0.028,0.028426,0.001,recomputed value rounds to the printed value
-3,UniMol,CKA,paper,0.019,0.018778,0.001,recomputed value rounds to the printed value
-3,UniMol,isoR2,paper,0.003,0.003016,0.001,recomputed value rounds to the printed value
-3,UniMol,EJS,paper,0.301,0.301547,0.001,printed value is the 3-dp truncation (not rounding) of the recomputed value
-3,UniMol,EJS_ROCAUC,paper,0.549,0.549794,0.001,printed value is the 3-dp truncation (not rounding) of the recomputed value
-3,UniMol,TS,paper,0.356,0.356314,0.001,recomputed value rounds to the printed value
-3,UniMol,KS,paper,0.997,0.996900,0.001,recomputed value rounds to the printed value
-6,E3FP,Spearman:mean,paper,0.026,0.026068,0.001,recomputed value rounds to the printed value
-6,E3FP,Spearman:ci95,paper,0.001,0.001085,0.001,recomputed value rounds to the printed value
-6,E3FP,Kendall:mean,paper,0.018,0.018248,0.001,recomputed value rounds to the printed value
-6,E3FP,Kendall:ci95,paper,0.001,0.000751,0.001,recomputed value rounds to the printed value
-6,E3FP,CKA:mean,paper,0.011,0.010683,0.001,recomputed value rounds to the printed value
-6,E3FP,CKA:ci95,paper,0.000,0.000383,0.001,recomputed value rounds to the printed value
-6,E3FP,isoR2:mean,paper,0.002,0.001507,0.001,recomputed value rounds to the printed value
-6,E3FP,isoR2:ci95,paper,0.000,0.000084,0.001,recomputed value rounds to the printed value
-6,E3FP,EJS(0.1sigma):mean,paper,0.151,0.150918,0.001,recomputed value rounds to the printed value
-6,E3FP,EJS(0.1sigma):ci95,paper,0.006,0.005522,0.001,recomputed value rounds to the printed value
-6,E3FP,EJS(0.5sigma):mean,paper,0.155,0.154587,0.001,recomputed value rounds to the printed value
-6,E3FP,EJS(0.5sigma):ci95,paper,0.006,0.005622,0.001,recomputed value rounds to the printed value
-6,E3FP,EJS(1sigma):mean,paper,0.162,0.161624,0.001,recomputed value rounds to the printed value
-6,E3FP,EJS(1sigma):ci95,paper,0.006,0.005834,0.001,recomputed value rounds to the printed value
-6,E3FP,EJS(2sigma):mean,paper,0.184,0.183794,0.001,recomputed value rounds to the printed value
-6,E3FP,EJS(2sigma):ci95,paper,0.007,0.006687,0.001,recomputed value rounds to the printed value
-6,E3FP,EJS(3sigma):mean,paper,0.217,0.217036,0.001,recomputed value rounds to the printed value
-6,E3FP,EJS(3sigma):ci95,paper,0.009,0.008698,0.001,recomputed value rounds to the printed value
-6,E3FP,ROC_AUC:mean,paper,0.531,0.531304,0.001,recomputed value rounds to the printed value
-6,E3FP,ROC_AUC:ci95,paper,0.001,0.001400,0.001,recomputed value rounds to the printed value
-6,E3FP,Smoothness:mean,paper,0.847,0.846836,0.001,recomputed value rounds to the printed value
-6,E3FP,Smoothness:ci95,paper,0.002,0.002126,0.001,recomputed value rounds to the printed value
-6,E3FP,TS:mean,paper,0.385,0.385347,0.001,recomputed value rounds to the printed value
-6,E3FP,TS:ci95,paper,0.010,0.010232,0.001,recomputed value rounds to the printed value
-6,E3FP,KS:mean,paper,0.913,0.913498,0.001,recomputed value rounds to the printed value
-6,E3FP,KS:ci95,paper,0.001,0.000972,0.001,recomputed value rounds to the printed value
-6,FMG,Spearman:mean,paper,0.015,0.013975,0.001,recomputed value does not match the printed value; MACE/FMG energy columns are only partially reproducible from the backed-up embeddings; no backed-up run reproduces this published value
-6,FMG,Spearman:ci95,paper,0.004,0.000781,0.001,recomputed value does not match the printed value; published MACE/FMG CIs are about 4-5x wider than this 1000-window run (consistent with roughly 40-47 windows); no backed-up run reproduces the published MACE/FMG CIs
-6,FMG,Kendall:mean,paper,0.010,0.009321,0.001,recomputed value does not match the printed value; MACE/FMG energy columns are only partially reproducible from the backed-up embeddings; no backed-up run reproduces this published value
-6,FMG,Kendall:ci95,paper,0.003,0.000521,0.001,recomputed value does not match the printed value; published MACE/FMG CIs are about 4-5x wider than this 1000-window run (consistent with roughly 40-47 windows); no backed-up run reproduces the published MACE/FMG CIs
-6,FMG,CKA:mean,paper,0.012,0.011691,0.001,recomputed value rounds to the printed value
-6,FMG,CKA:ci95,paper,0.001,0.000167,0.001,recomputed value does not match the printed value; published MACE/FMG CIs are about 4-5x wider than this 1000-window run (consistent with roughly 40-47 windows); no backed-up run reproduces the published MACE/FMG CIs
-6,FMG,isoR2:mean,paper,0.001,0.000822,0.001,recomputed value rounds to the printed value
-6,FMG,isoR2:ci95,paper,0.000,0.000064,0.001,recomputed value rounds to the printed value
-6,FMG,EJS(0.1sigma):mean,paper,0.250,0.250204,0.001,recomputed value rounds to the printed value
-6,FMG,EJS(0.1sigma):ci95,paper,0.000,0.000031,0.001,recomputed value rounds to the printed value
-6,FMG,EJS(0.5sigma):mean,paper,0.253,0.252309,0.001,recomputed value does not match the printed value; MACE/FMG energy columns are only partially reproducible from the backed-up embeddings; no backed-up run reproduces this published value
-6,FMG,EJS(0.5sigma):ci95,paper,0.001,0.000168,0.001,recomputed value does not match the printed value; published MACE/FMG CIs are about 4-5x wider than this 1000-window run (consistent with roughly 40-47 windows); no backed-up run reproduces the published MACE/FMG CIs
-6,FMG,EJS(1sigma):mean,paper,0.257,0.256173,0.001,recomputed value does not match the printed value; MACE/FMG energy columns are only partially reproducible from the backed-up embeddings; no backed-up run reproduces this published value
-6,FMG,EJS(1sigma):ci95,paper,0.002,0.000420,0.001,recomputed value does not match the printed value; published MACE/FMG CIs are about 4-5x wider than this 1000-window run (consistent with roughly 40-47 windows); no backed-up run reproduces the published MACE/FMG CIs
-6,FMG,EJS(2sigma):mean,paper,0.269,0.266977,0.001,recomputed value does not match the printed value; MACE/FMG energy columns are only partially reproducible from the backed-up embeddings; no backed-up run reproduces this published value
-6,FMG,EJS(2sigma):ci95,paper,0.006,0.001189,0.001,recomputed value does not match the printed value; published MACE/FMG CIs are about 4-5x wider than this 1000-window run (consistent with roughly 40-47 windows); no backed-up run reproduces the published MACE/FMG CIs
-6,FMG,EJS(3sigma):mean,paper,0.283,0.281762,0.001,recomputed value does not match the printed value; MACE/FMG energy columns are only partially reproducible from the backed-up embeddings; no backed-up run reproduces this published value
-6,FMG,EJS(3sigma):ci95,paper,0.016,0.002975,0.001,recomputed value does not match the printed value; published MACE/FMG CIs are about 4-5x wider than this 1000-window run (consistent with roughly 40-47 windows); no backed-up run reproduces the published MACE/FMG CIs
-6,FMG,ROC_AUC:mean,paper,0.517,0.515996,0.001,recomputed value does not match the printed value; MACE/FMG energy columns are only partially reproducible from the backed-up embeddings; no backed-up run reproduces this published value
-6,FMG,ROC_AUC:ci95,paper,0.005,0.000930,0.001,recomputed value does not match the printed value; published MACE/FMG CIs are about 4-5x wider than this 1000-window run (consistent with roughly 40-47 windows); no backed-up run reproduces the published MACE/FMG CIs
-6,FMG,Smoothness:mean,paper,0.972,0.999889,0.001,recomputed value does not match the printed value; MACE/FMG energy columns are only partially reproducible from the backed-up embeddings; no backed-up run reproduces this published value; published FMG Smoothness 0.972 +/- 0.002 is not attainable with the backed-up FMG embeddings: every one of the 1000 per-window values is >= 0.999
-6,FMG,Smoothness:ci95,paper,0.002,0.000007,0.001,recomputed value does not match the printed value; published MACE/FMG CIs are about 4-5x wider than this 1000-window run (consistent with roughly 40-47 windows); no backed-up run reproduces the published MACE/FMG CIs; published FMG Smoothness 0.972 +/- 0.002 is not attainable with the backed-up FMG embeddings: every one of the 1000 per-window values is >= 0.999
-6,FMG,TS:mean,paper,0.583,0.582899,0.001,recomputed value rounds to the printed value
-6,FMG,TS:ci95,paper,0.007,0.001634,0.001,recomputed value does not match the printed value; published MACE/FMG CIs are about 4-5x wider than this 1000-window run (consistent with roughly 40-47 windows); no backed-up run reproduces the published MACE/FMG CIs
-6,FMG,KS:mean,paper,1.000,0.999827,0.001,recomputed value rounds to the printed value
-6,FMG,KS:ci95,paper,0.000,0.000015,0.001,recomputed value rounds to the printed value
-6,GemNet,Spearman:mean,paper,0.078,0.077526,0.001,recomputed value rounds to the printed value
-6,GemNet,Spearman:ci95,paper,0.002,0.002243,0.001,recomputed value rounds to the printed value
-6,GemNet,Kendall:mean,paper,0.052,0.051807,0.001,recomputed value rounds to the printed value
-6,GemNet,Kendall:ci95,paper,0.002,0.001504,0.001,recomputed value rounds to the printed value
-6,GemNet,CKA:mean,paper,0.016,0.016325,0.001,recomputed value rounds to the printed value
-6,GemNet,CKA:ci95,paper,0.000,0.000417,0.001,recomputed value rounds to the printed value
-6,GemNet,isoR2:mean,paper,0.013,0.013470,0.001,recomputed value rounds to the printed value
-6,GemNet,isoR2:ci95,paper,0.001,0.000981,0.001,recomputed value rounds to the printed value
-6,GemNet,EJS(0.1sigma):mean,paper,0.252,0.251834,0.001,recomputed value rounds to the printed value
-6,GemNet,EJS(0.1sigma):ci95,paper,0.000,0.000067,0.001,recomputed value rounds to the printed value
-6,GemNet,EJS(0.5sigma):mean,paper,0.263,0.263241,0.001,recomputed value rounds to the printed value
-6,GemNet,EJS(0.5sigma):ci95,paper,0.000,0.000446,0.001,recomputed value rounds to the printed value
-6,GemNet,EJS(1sigma):mean,paper,0.286,0.285514,0.001,recomputed value rounds to the printed value
-6,GemNet,EJS(1sigma):ci95,paper,0.001,0.001190,0.001,recomputed value rounds to the printed value
-6,GemNet,EJS(2sigma):mean,paper,0.356,0.355988,0.001,recomputed value rounds to the printed value
-6,GemNet,EJS(2sigma):ci95,paper,0.004,0.003577,0.001,recomputed value rounds to the printed value
-6,GemNet,EJS(3sigma):mean,paper,0.451,0.450997,0.001,recomputed value rounds to the printed value
-6,GemNet,EJS(3sigma):ci95,paper,0.007,0.007127,0.001,recomputed value rounds to the printed value
-6,GemNet,ROC_AUC:mean,paper,0.592,0.591777,0.001,recomputed value rounds to the printed value
-6,GemNet,ROC_AUC:ci95,paper,0.003,0.002668,0.001,recomputed value rounds to the printed value
-6,GemNet,Smoothness:mean,paper,0.998,0.998238,0.001,recomputed value rounds to the printed value
-6,GemNet,Smoothness:ci95,paper,0.000,0.000188,0.001,recomputed value rounds to the printed value
-6,GemNet,TS:mean,paper,0.444,0.443715,0.001,recomputed value rounds to the printed value
-6,GemNet,TS:ci95,paper,0.004,0.003603,0.001,recomputed value rounds to the printed value
-6,GemNet,KS:mean,paper,0.998,0.998367,0.001,recomputed value rounds to the printed value
-6,GemNet,KS:ci95,paper,0.000,0.000172,0.001,recomputed value rounds to the printed value
-6,MACE,Spearman:mean,paper,0.236,0.236143,0.001,recomputed value rounds to the printed value
-6,MACE,Spearman:ci95,paper,0.011,0.002361,0.001,recomputed value does not match the printed value; published MACE/FMG CIs are about 4-5x wider than this 1000-window run (consistent with roughly 40-47 windows); no backed-up run reproduces the published MACE/FMG CIs
-6,MACE,Kendall:mean,paper,0.160,0.159662,0.001,recomputed value rounds to the printed value
-6,MACE,Kendall:ci95,paper,0.008,0.001626,0.001,recomputed value does not match the printed value; published MACE/FMG CIs are about 4-5x wider than this 1000-window run (consistent with roughly 40-47 windows); no backed-up run reproduces the published MACE/FMG CIs
-6,MACE,CKA:mean,paper,0.017,0.017391,0.001,recomputed value rounds to the printed value
-6,MACE,CKA:ci95,paper,0.001,0.000285,0.001,recomputed value does not match the printed value; published MACE/FMG CIs are about 4-5x wider than this 1000-window run (consistent with roughly 40-47 windows); no backed-up run reproduces the published MACE/FMG CIs
-6,MACE,isoR2:mean,paper,0.083,0.080723,0.001,recomputed value does not match the printed value; MACE/FMG energy columns are only partially reproducible from the backed-up embeddings; no backed-up run reproduces this published value
-6,MACE,isoR2:ci95,paper,0.010,0.002210,0.001,recomputed value does not match the printed value; published MACE/FMG CIs are about 4-5x wider than this 1000-window run (consistent with roughly 40-47 windows); no backed-up run reproduces the published MACE/FMG CIs
-6,MACE,EJS(0.1sigma):mean,paper,0.255,0.255266,0.001,recomputed value rounds to the printed value
-6,MACE,EJS(0.1sigma):ci95,paper,0.000,0.000079,0.001,recomputed value rounds to the printed value
-6,MACE,EJS(0.5sigma):mean,paper,0.286,0.286281,0.001,recomputed value rounds to the printed value
-6,MACE,EJS(0.5sigma):ci95,paper,0.002,0.000527,0.001,recomputed value does not match the printed value; published MACE/FMG CIs are about 4-5x wider than this 1000-window run (consistent with roughly 40-47 windows); no backed-up run reproduces the published MACE/FMG CIs
-6,MACE,EJS(1sigma):mean,paper,0.350,0.349974,0.001,recomputed value rounds to the printed value
-6,MACE,EJS(1sigma):ci95,paper,0.007,0.001425,0.001,recomputed value does not match the printed value; published MACE/FMG CIs are about 4-5x wider than this 1000-window run (consistent with roughly 40-47 windows); no backed-up run reproduces the published MACE/FMG CIs
-6,MACE,EJS(2sigma):mean,paper,0.578,0.572063,0.001,recomputed value does not match the printed value; MACE/FMG energy columns are only partially reproducible from the backed-up embeddings; no backed-up run reproduces this published value
-6,MACE,EJS(2sigma):ci95,paper,0.019,0.004105,0.001,recomputed value does not match the printed value; published MACE/FMG CIs are about 4-5x wider than this 1000-window run (consistent with roughly 40-47 windows); no backed-up run reproduces the published MACE/FMG CIs
-6,MACE,EJS(3sigma):mean,paper,0.845,0.837292,0.001,recomputed value does not match the printed value; MACE/FMG energy columns are only partially reproducible from the backed-up embeddings; no backed-up run reproduces this published value
-6,MACE,EJS(3sigma):ci95,paper,0.025,0.005381,0.001,recomputed value does not match the printed value; published MACE/FMG CIs are about 4-5x wider than this 1000-window run (consistent with roughly 40-47 windows); no backed-up run reproduces the published MACE/FMG CIs
-6,MACE,ROC_AUC:mean,paper,0.764,0.760630,0.001,recomputed value does not match the printed value; MACE/FMG energy columns are only partially reproducible from the backed-up embeddings; no backed-up run reproduces this published value
-6,MACE,ROC_AUC:ci95,paper,0.011,0.002222,0.001,recomputed value does not match the printed value; published MACE/FMG CIs are about 4-5x wider than this 1000-window run (consistent with roughly 40-47 windows); no backed-up run reproduces the published MACE/FMG CIs
-6,MACE,Smoothness:mean,paper,0.999,0.999394,0.001,recomputed value rounds to the printed value
-6,MACE,Smoothness:ci95,paper,0.000,0.000031,0.001,recomputed value rounds to the printed value
-6,MACE,TS:mean,paper,0.424,0.424343,0.001,recomputed value rounds to the printed value
-6,MACE,TS:ci95,paper,0.014,0.003126,0.001,recomputed value does not match the printed value; published MACE/FMG CIs are about 4-5x wider than this 1000-window run (consistent with roughly 40-47 windows); no backed-up run reproduces the published MACE/FMG CIs
-6,MACE,KS:mean,paper,0.999,0.999448,0.001,recomputed value rounds to the printed value
-6,MACE,KS:ci95,paper,0.000,0.000022,0.001,recomputed value rounds to the printed value
-6,MolAE,Spearman:mean,paper,0.039,0.038868,0.001,recomputed value rounds to the printed value
-6,MolAE,Spearman:ci95,paper,0.001,0.001260,0.001,recomputed value rounds to the printed value
-6,MolAE,Kendall:mean,paper,0.026,0.025930,0.001,recomputed value rounds to the printed value
-6,MolAE,Kendall:ci95,paper,0.001,0.000841,0.001,recomputed value rounds to the printed value
-6,MolAE,CKA:mean,paper,0.024,0.024077,0.001,recomputed value rounds to the printed value
-6,MolAE,CKA:ci95,paper,0.000,0.000342,0.001,recomputed value rounds to the printed value
-6,MolAE,isoR2:mean,paper,0.003,0.002824,0.001,recomputed value rounds to the printed value
-6,MolAE,isoR2:ci95,paper,0.000,0.000180,0.001,recomputed value rounds to the printed value
-6,MolAE,EJS(0.1sigma):mean,paper,0.251,0.250616,0.001,recomputed value rounds to the printed value
-6,MolAE,EJS(0.1sigma):ci95,paper,0.000,0.000043,0.001,recomputed value rounds to the printed value
-6,MolAE,EJS(0.5sigma):mean,paper,0.256,0.255715,0.001,recomputed value rounds to the printed value
-6,MolAE,EJS(0.5sigma):ci95,paper,0.000,0.000266,0.001,recomputed value rounds to the printed value
-6,MolAE,EJS(1sigma):mean,paper,0.265,0.265368,0.001,recomputed value rounds to the printed value
-6,MolAE,EJS(1sigma):ci95,paper,0.001,0.000683,0.001,recomputed value rounds to the printed value
-6,MolAE,EJS(2sigma):mean,paper,0.294,0.293714,0.001,recomputed value rounds to the printed value
-6,MolAE,EJS(2sigma):ci95,paper,0.002,0.001914,0.001,recomputed value rounds to the printed value
-6,MolAE,EJS(3sigma):mean,paper,0.328,0.327981,0.001,recomputed value rounds to the printed value
-6,MolAE,EJS(3sigma):ci95,paper,0.004,0.004323,0.001,recomputed value rounds to the printed value
-6,MolAE,ROC_AUC:mean,paper,0.545,0.545296,0.001,recomputed value rounds to the printed value
-6,MolAE,ROC_AUC:ci95,paper,0.001,0.001443,0.001,recomputed value rounds to the printed value
-6,MolAE,Smoothness:mean,paper,0.996,0.996316,0.001,recomputed value rounds to the printed value
-6,MolAE,Smoothness:ci95,paper,0.000,0.000125,0.001,recomputed value rounds to the printed value
-6,MolAE,TS:mean,paper,0.346,0.346272,0.001,recomputed value rounds to the printed value
-6,MolAE,TS:ci95,paper,0.001,0.001449,0.001,recomputed value rounds to the printed value
-6,MolAE,KS:mean,paper,0.998,0.998199,0.001,recomputed value rounds to the printed value
-6,MolAE,KS:ci95,paper,0.000,0.000061,0.001,recomputed value rounds to the printed value
-6,MolSpectra,Spearman:mean,paper,0.023,0.022909,0.001,recomputed value rounds to the printed value
-6,MolSpectra,Spearman:ci95,paper,0.001,0.001254,0.001,recomputed value rounds to the printed value
-6,MolSpectra,Kendall:mean,paper,0.015,0.015282,0.001,recomputed value rounds to the printed value
-6,MolSpectra,Kendall:ci95,paper,0.001,0.000836,0.001,recomputed value rounds to the printed value
-6,MolSpectra,CKA:mean,paper,0.006,0.006444,0.001,recomputed value rounds to the printed value
-6,MolSpectra,CKA:ci95,paper,0.000,0.000169,0.001,recomputed value rounds to the printed value
-6,MolSpectra,isoR2:mean,paper,0.001,0.001481,0.001,recomputed value rounds to the printed value
-6,MolSpectra,isoR2:ci95,paper,0.000,0.000174,0.001,recomputed value rounds to the printed value
-6,MolSpectra,EJS(0.1sigma):mean,paper,0.250,0.250276,0.001,recomputed value rounds to the printed value
-6,MolSpectra,EJS(0.1sigma):ci95,paper,0.000,0.000041,0.001,recomputed value rounds to the printed value
-6,MolSpectra,EJS(0.5sigma):mean,paper,0.253,0.252824,0.001,recomputed value rounds to the printed value
-6,MolSpectra,EJS(0.5sigma):ci95,paper,0.000,0.000258,0.001,recomputed value rounds to the printed value
-6,MolSpectra,EJS(1sigma):mean,paper,0.258,0.257560,0.001,recomputed value rounds to the printed value
-6,MolSpectra,EJS(1sigma):ci95,paper,0.001,0.000658,0.001,recomputed value rounds to the printed value
-6,MolSpectra,EJS(2sigma):mean,paper,0.271,0.270563,0.001,recomputed value rounds to the printed value
-6,MolSpectra,EJS(2sigma):ci95,paper,0.002,0.001780,0.001,recomputed value rounds to the printed value
-6,MolSpectra,EJS(3sigma):mean,paper,0.289,0.289048,0.001,recomputed value rounds to the printed value
-6,MolSpectra,EJS(3sigma):ci95,paper,0.004,0.003845,0.001,recomputed value rounds to the printed value
-6,MolSpectra,ROC_AUC:mean,paper,0.527,0.526507,0.001,recomputed value rounds to the printed value
-6,MolSpectra,ROC_AUC:ci95,paper,0.001,0.001402,0.001,recomputed value rounds to the printed value
-6,MolSpectra,Smoothness:mean,paper,0.974,0.973790,0.001,recomputed value rounds to the printed value
-6,MolSpectra,Smoothness:ci95,paper,0.001,0.000667,0.001,recomputed value rounds to the printed value
-6,MolSpectra,TS:mean,paper,0.409,0.408949,0.001,recomputed value rounds to the printed value
-6,MolSpectra,TS:ci95,paper,0.004,0.004161,0.001,recomputed value rounds to the printed value
-6,MolSpectra,KS:mean,paper,0.976,0.976430,0.001,recomputed value rounds to the printed value
-6,MolSpectra,KS:ci95,paper,0.001,0.000974,0.001,recomputed value rounds to the printed value
-7,all,jumps(0.1sigma):mean,paper,1839169.111,1839169.111000,0.001,recomputed value rounds to the printed value; model-independent; printed with thousands separators in the paper
-7,all,jumps(0.1sigma):ci95,paper,34.666,34.665787,0.001,recomputed value rounds to the printed value; model-independent; printed with thousands separators in the paper
-7,all,jumps(0.5sigma):mean,paper,1232341.449,1232341.449000,0.001,recomputed value rounds to the printed value; model-independent; printed with thousands separators in the paper
-7,all,jumps(0.5sigma):ci95,paper,61.925,61.924894,0.001,recomputed value rounds to the printed value; model-independent; printed with thousands separators in the paper
-7,all,jumps(1sigma):mean,paper,638505.706,638505.706000,0.001,recomputed value rounds to the printed value; model-independent; printed with thousands separators in the paper
-7,all,jumps(1sigma):ci95,paper,197.971,197.970570,0.001,recomputed value rounds to the printed value; model-independent; printed with thousands separators in the paper
-7,all,jumps(2sigma):mean,paper,102542.184,102542.184000,0.001,recomputed value rounds to the printed value; model-independent; printed with thousands separators in the paper
-7,all,jumps(2sigma):ci95,paper,492.257,492.257172,0.001,recomputed value rounds to the printed value; model-independent; printed with thousands separators in the paper
-7,all,jumps(3sigma):mean,paper,8929.385,8929.385000,0.001,recomputed value rounds to the printed value; model-independent; printed with thousands separators in the paper
-7,all,jumps(3sigma):ci95,paper,167.468,167.468492,0.001,recomputed value rounds to the printed value; model-independent; printed with thousands separators in the paper
-3,E3FP,Spearman,v2,,0.026068,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-3,E3FP,Kendall,v2,,0.018248,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-3,E3FP,CKA,v2,,0.016007,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-3,E3FP,isoR2,v2,,0.002812,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-3,E3FP,EJS,v2,,0.184661,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-3,E3FP,EJS_ROCAUC,v2,,0.531304,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-3,E3FP,KS,v2,,0.530219,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-3,FMG,Spearman,v2,,0.013975,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-3,FMG,Kendall,v2,,0.009319,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-3,FMG,CKA,v2,,0.009316,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-3,FMG,isoR2,v2,,0.000924,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-3,FMG,EJS,v2,,0.267582,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-3,FMG,EJS_ROCAUC,v2,,0.515996,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-3,FMG,KS,v2,,0.186257,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-3,GemNet,Spearman,v2,,0.077526,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-3,GemNet,Kendall,v2,,0.051798,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-3,GemNet,CKA,v2,,0.041768,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-3,GemNet,isoR2,v2,,0.012737,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-3,GemNet,EJS,v2,,0.359672,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-3,GemNet,EJS_ROCAUC,v2,,0.591777,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-3,GemNet,KS,v2,,0.159024,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-3,MACE,Spearman,v2,,0.236143,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-3,MACE,Kendall,v2,,0.159639,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-3,MACE,CKA,v2,,0.175913,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-3,MACE,isoR2,v2,,0.083043,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-3,MACE,EJS,v2,,0.583026,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-3,MACE,EJS_ROCAUC,v2,,0.760630,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-3,MACE,KS,v2,,0.173223,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-3,MolAE,Spearman,v2,,0.038868,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-3,MolAE,Kendall,v2,,0.025923,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-3,MolAE,CKA,v2,,0.031395,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-3,MolAE,isoR2,v2,,0.003183,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-3,MolAE,EJS,v2,,0.295529,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-3,MolAE,EJS_ROCAUC,v2,,0.545296,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-3,MolAE,KS,v2,,0.325364,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-3,MolSpectra,Spearman,v2,,0.022909,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-3,MolSpectra,Kendall,v2,,0.015279,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-3,MolSpectra,CKA,v2,,0.013705,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-3,MolSpectra,isoR2,v2,,0.001810,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-3,MolSpectra,EJS,v2,,0.271520,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-3,MolSpectra,EJS_ROCAUC,v2,,0.526507,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-3,MolSpectra,KS,v2,,0.261547,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-3,UniMol,Spearman,v2,,0.042610,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-3,UniMol,Kendall,v2,,0.028420,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-3,UniMol,CKA,v2,,0.032049,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-3,UniMol,isoR2,v2,,0.003165,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-3,UniMol,EJS,v2,,0.303481,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-3,UniMol,EJS_ROCAUC,v2,,0.549794,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-3,UniMol,KS,v2,,0.301884,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-6,E3FP,Spearman:mean,v2,,0.026068,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-6,E3FP,Spearman:ci95,v2,,0.001085,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-6,E3FP,Kendall:mean,v2,,0.018248,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-6,E3FP,Kendall:ci95,v2,,0.000751,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-6,E3FP,CKA:mean,v2,,0.016007,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-6,E3FP,CKA:ci95,v2,,0.000732,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-6,E3FP,isoR2:mean,v2,,0.002812,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-6,E3FP,isoR2:ci95,v2,,0.000145,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-6,E3FP,EJS(0.1sigma):mean,v2,,0.150929,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-6,E3FP,EJS(0.1sigma):ci95,v2,,0.005522,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-6,E3FP,EJS(0.5sigma):mean,v2,,0.154680,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-6,E3FP,EJS(0.5sigma):ci95,v2,,0.005623,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-6,E3FP,EJS(1sigma):mean,v2,,0.161898,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-6,E3FP,EJS(1sigma):ci95,v2,,0.005840,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-6,E3FP,EJS(2sigma):mean,v2,,0.184661,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-6,E3FP,EJS(2sigma):ci95,v2,,0.006718,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-6,E3FP,EJS(3sigma):mean,v2,,0.219369,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-6,E3FP,EJS(3sigma):ci95,v2,,0.008872,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-6,E3FP,ROC_AUC:mean,v2,,0.531304,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-6,E3FP,ROC_AUC:ci95,v2,,0.001400,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-6,E3FP,KS:mean,v2,,0.530219,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-6,E3FP,KS:ci95,v2,,0.008080,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-6,FMG,Spearman:mean,v2,,0.013975,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-6,FMG,Spearman:ci95,v2,,0.000781,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-6,FMG,Kendall:mean,v2,,0.009319,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-6,FMG,Kendall:ci95,v2,,0.000520,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-6,FMG,CKA:mean,v2,,0.009316,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-6,FMG,CKA:ci95,v2,,0.000441,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-6,FMG,isoR2:mean,v2,,0.000924,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-6,FMG,isoR2:ci95,v2,,0.000065,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-6,FMG,EJS(0.1sigma):mean,v2,,0.250330,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-6,FMG,EJS(0.1sigma):ci95,v2,,0.000028,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-6,FMG,EJS(0.5sigma):mean,v2,,0.252497,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-6,FMG,EJS(0.5sigma):ci95,v2,,0.000171,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-6,FMG,EJS(1sigma):mean,v2,,0.256485,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-6,FMG,EJS(1sigma):ci95,v2,,0.000432,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-6,FMG,EJS(2sigma):mean,v2,,0.267582,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-6,FMG,EJS(2sigma):ci95,v2,,0.001228,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-6,FMG,EJS(3sigma):mean,v2,,0.282903,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-6,FMG,EJS(3sigma):ci95,v2,,0.003169,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-6,FMG,ROC_AUC:mean,v2,,0.515996,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-6,FMG,ROC_AUC:ci95,v2,,0.000930,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-6,FMG,KS:mean,v2,,0.186257,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-6,FMG,KS:ci95,v2,,0.002900,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-6,GemNet,Spearman:mean,v2,,0.077526,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-6,GemNet,Spearman:ci95,v2,,0.002243,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-6,GemNet,Kendall:mean,v2,,0.051798,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-6,GemNet,Kendall:ci95,v2,,0.001504,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-6,GemNet,CKA:mean,v2,,0.041768,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-6,GemNet,CKA:ci95,v2,,0.001230,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-6,GemNet,isoR2:mean,v2,,0.012737,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-6,GemNet,isoR2:ci95,v2,,0.000859,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-6,GemNet,EJS(0.1sigma):mean,v2,,0.252056,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-6,GemNet,EJS(0.1sigma):ci95,v2,,0.000070,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-6,GemNet,EJS(0.5sigma):mean,v2,,0.263785,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-6,GemNet,EJS(0.5sigma):ci95,v2,,0.000468,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-6,GemNet,EJS(1sigma):mean,v2,,0.286809,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-6,GemNet,EJS(1sigma):ci95,v2,,0.001253,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-6,GemNet,EJS(2sigma):mean,v2,,0.359672,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-6,GemNet,EJS(2sigma):ci95,v2,,0.003771,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-6,GemNet,EJS(3sigma):mean,v2,,0.456857,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-6,GemNet,EJS(3sigma):ci95,v2,,0.007447,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-6,GemNet,ROC_AUC:mean,v2,,0.591777,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-6,GemNet,ROC_AUC:ci95,v2,,0.002668,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-6,GemNet,KS:mean,v2,,0.159024,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-6,GemNet,KS:ci95,v2,,0.003895,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-6,MACE,Spearman:mean,v2,,0.236143,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-6,MACE,Spearman:ci95,v2,,0.002361,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-6,MACE,Kendall:mean,v2,,0.159639,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-6,MACE,Kendall:ci95,v2,,0.001625,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-6,MACE,CKA:mean,v2,,0.175913,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-6,MACE,CKA:ci95,v2,,0.001936,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-6,MACE,isoR2:mean,v2,,0.083043,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-6,MACE,isoR2:ci95,v2,,0.001556,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-6,MACE,EJS(0.1sigma):mean,v2,,0.255564,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-6,MACE,EJS(0.1sigma):ci95,v2,,0.000084,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-6,MACE,EJS(0.5sigma):mean,v2,,0.287487,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-6,MACE,EJS(0.5sigma):ci95,v2,,0.000562,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-6,MACE,EJS(1sigma):mean,v2,,0.353460,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-6,MACE,EJS(1sigma):ci95,v2,,0.001528,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-6,MACE,EJS(2sigma):mean,v2,,0.583026,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-6,MACE,EJS(2sigma):ci95,v2,,0.004338,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-6,MACE,EJS(3sigma):mean,v2,,0.849128,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-6,MACE,EJS(3sigma):ci95,v2,,0.005353,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-6,MACE,ROC_AUC:mean,v2,,0.760630,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-6,MACE,ROC_AUC:ci95,v2,,0.002222,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-6,MACE,KS:mean,v2,,0.173223,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-6,MACE,KS:ci95,v2,,0.003402,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-6,MolAE,Spearman:mean,v2,,0.038868,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-6,MolAE,Spearman:ci95,v2,,0.001260,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-6,MolAE,Kendall:mean,v2,,0.025923,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-6,MolAE,Kendall:ci95,v2,,0.000840,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-6,MolAE,CKA:mean,v2,,0.031395,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-6,MolAE,CKA:ci95,v2,,0.001029,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-6,MolAE,isoR2:mean,v2,,0.003183,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-6,MolAE,isoR2:ci95,v2,,0.000162,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-6,MolAE,EJS(0.1sigma):mean,v2,,0.250940,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-6,MolAE,EJS(0.1sigma):ci95,v2,,0.000043,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-6,MolAE,EJS(0.5sigma):mean,v2,,0.256201,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-6,MolAE,EJS(0.5sigma):ci95,v2,,0.000277,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-6,MolAE,EJS(1sigma):mean,v2,,0.266207,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-6,MolAE,EJS(1sigma):ci95,v2,,0.000713,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-6,MolAE,EJS(2sigma):mean,v2,,0.295529,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-6,MolAE,EJS(2sigma):ci95,v2,,0.002003,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-6,MolAE,EJS(3sigma):mean,v2,,0.331006,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-6,MolAE,EJS(3sigma):ci95,v2,,0.004616,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-6,MolAE,ROC_AUC:mean,v2,,0.545296,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-6,MolAE,ROC_AUC:ci95,v2,,0.001443,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-6,MolAE,KS:mean,v2,,0.325364,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-6,MolAE,KS:ci95,v2,,0.003224,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-6,MolSpectra,Spearman:mean,v2,,0.022909,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-6,MolSpectra,Spearman:ci95,v2,,0.001254,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-6,MolSpectra,Kendall:mean,v2,,0.015279,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-6,MolSpectra,Kendall:ci95,v2,,0.000836,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-6,MolSpectra,CKA:mean,v2,,0.013705,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-6,MolSpectra,CKA:ci95,v2,,0.000523,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-6,MolSpectra,isoR2:mean,v2,,0.001810,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-6,MolSpectra,isoR2:ci95,v2,,0.000164,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-6,MolSpectra,EJS(0.1sigma):mean,v2,,0.250465,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-6,MolSpectra,EJS(0.1sigma):ci95,v2,,0.000041,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-6,MolSpectra,EJS(0.5sigma):mean,v2,,0.253109,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-6,MolSpectra,EJS(0.5sigma):ci95,v2,,0.000268,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-6,MolSpectra,EJS(1sigma):mean,v2,,0.258028,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-6,MolSpectra,EJS(1sigma):ci95,v2,,0.000686,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-6,MolSpectra,EJS(2sigma):mean,v2,,0.271520,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-6,MolSpectra,EJS(2sigma):ci95,v2,,0.001857,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-6,MolSpectra,EJS(3sigma):mean,v2,,0.290743,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-6,MolSpectra,EJS(3sigma):ci95,v2,,0.004092,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-6,MolSpectra,ROC_AUC:mean,v2,,0.526507,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-6,MolSpectra,ROC_AUC:ci95,v2,,0.001402,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-6,MolSpectra,KS:mean,v2,,0.261547,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-6,MolSpectra,KS:ci95,v2,,0.006749,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-7,all,jumps(0.1sigma):mean,v2,,1836048.939000,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-7,all,jumps(0.1sigma):ci95,v2,,156.743292,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-7,all,jumps(0.5sigma):mean,v2,,1218701.243000,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-7,all,jumps(0.5sigma):ci95,v2,,625.179967,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-7,all,jumps(1sigma):mean,v2,,620312.428000,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-7,all,jumps(1sigma):ci95,v2,,591.198447,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-7,all,jumps(2sigma):mean,v2,,94275.340000,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-7,all,jumps(2sigma):ci95,v2,,163.304862,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-7,all,jumps(3sigma):mean,v2,,7494.103000,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
-7,all,jumps(3sigma):ci95,v2,,105.603263,0.001,v2 metric definitions (docs/metrics/energy.md); no published counterpart
+3,E3FP,Spearman,paper,0.026,0.026068,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+3,E3FP,Kendall,paper,0.018,0.018248,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+3,E3FP,CKA,paper,0.011,0.010683,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+3,E3FP,isoR2,paper,0.002,0.001507,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+3,E3FP,EJS,paper,0.184,0.183794,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+3,E3FP,EJS_ROCAUC,paper,0.531,0.531304,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+3,E3FP,TS,paper,0.385,0.385347,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+3,E3FP,KS,paper,0.916,0.913498,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+3,FMG,Spearman,paper,0.015,0.013975,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+3,FMG,Kendall,paper,0.009,0.009321,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+3,FMG,CKA,paper,0.011,0.011691,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+3,FMG,isoR2,paper,0.001,0.000822,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+3,FMG,EJS,paper,0.269,0.266977,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+3,FMG,EJS_ROCAUC,paper,0.517,0.515996,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+3,FMG,TS,paper,0.582,0.582899,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+3,FMG,KS,paper,0.999,0.999827,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+3,GemNet,Spearman,paper,0.078,0.077526,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+3,GemNet,Kendall,paper,0.052,0.051807,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+3,GemNet,CKA,paper,0.016,0.016325,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+3,GemNet,isoR2,paper,0.013,0.013470,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+3,GemNet,EJS,paper,0.356,0.355988,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+3,GemNet,EJS_ROCAUC,paper,0.592,0.591777,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+3,GemNet,TS,paper,0.444,0.443715,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+3,GemNet,KS,paper,0.998,0.998367,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+3,MACE,Spearman,paper,0.236,0.236143,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+3,MACE,Kendall,paper,0.159,0.159662,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+3,MACE,CKA,paper,0.017,0.017391,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+3,MACE,isoR2,paper,0.080,0.080723,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+3,MACE,EJS,paper,0.578,0.572063,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+3,MACE,EJS_ROCAUC,paper,0.764,0.760630,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+3,MACE,TS,paper,0.424,0.424343,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+3,MACE,KS,paper,0.999,0.999448,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+3,MolAE,Spearman,paper,0.039,0.038868,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+3,MolAE,Kendall,paper,0.026,0.025930,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+3,MolAE,CKA,paper,0.024,0.024077,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+3,MolAE,isoR2,paper,0.003,0.002824,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+3,MolAE,EJS,paper,0.294,0.293714,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+3,MolAE,EJS_ROCAUC,paper,0.545,0.545296,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+3,MolAE,TS,paper,0.346,0.346272,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+3,MolAE,KS,paper,0.998,0.998199,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+3,MolSpectra,Spearman,paper,0.023,0.022909,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+3,MolSpectra,Kendall,paper,0.015,0.015282,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+3,MolSpectra,CKA,paper,0.006,0.006444,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+3,MolSpectra,isoR2,paper,0.001,0.001481,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+3,MolSpectra,EJS,paper,0.271,0.270563,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+3,MolSpectra,EJS_ROCAUC,paper,0.526,0.526507,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+3,MolSpectra,TS,paper,0.409,0.408949,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+3,MolSpectra,KS,paper,0.977,0.976430,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+3,UniMol,Spearman,paper,0.043,0.042610,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+3,UniMol,Kendall,paper,0.028,0.028426,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+3,UniMol,CKA,paper,0.019,0.018778,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+3,UniMol,isoR2,paper,0.003,0.003016,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+3,UniMol,EJS,paper,0.301,0.301547,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+3,UniMol,EJS_ROCAUC,paper,0.549,0.549794,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+3,UniMol,TS,paper,0.356,0.356314,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+3,UniMol,KS,paper,0.997,0.996900,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+6,E3FP,Spearman:mean,paper,0.026,0.026068,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+6,E3FP,Spearman:ci95,paper,0.001,0.001085,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+6,E3FP,Kendall:mean,paper,0.018,0.018248,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+6,E3FP,Kendall:ci95,paper,0.001,0.000751,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+6,E3FP,CKA:mean,paper,0.011,0.010683,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+6,E3FP,CKA:ci95,paper,0.000,0.000383,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+6,E3FP,isoR2:mean,paper,0.002,0.001507,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+6,E3FP,isoR2:ci95,paper,0.000,0.000084,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+6,E3FP,EJS(0.1sigma):mean,paper,0.151,0.150918,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+6,E3FP,EJS(0.1sigma):ci95,paper,0.006,0.005522,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+6,E3FP,EJS(0.5sigma):mean,paper,0.155,0.154587,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+6,E3FP,EJS(0.5sigma):ci95,paper,0.006,0.005622,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+6,E3FP,EJS(1sigma):mean,paper,0.162,0.161624,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+6,E3FP,EJS(1sigma):ci95,paper,0.006,0.005834,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+6,E3FP,EJS(2sigma):mean,paper,0.184,0.183794,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+6,E3FP,EJS(2sigma):ci95,paper,0.007,0.006687,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+6,E3FP,EJS(3sigma):mean,paper,0.217,0.217036,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+6,E3FP,EJS(3sigma):ci95,paper,0.009,0.008698,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+6,E3FP,ROC_AUC:mean,paper,0.531,0.531304,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+6,E3FP,ROC_AUC:ci95,paper,0.001,0.001400,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+6,E3FP,Smoothness:mean,paper,0.847,0.846836,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+6,E3FP,Smoothness:ci95,paper,0.002,0.002126,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+6,E3FP,TS:mean,paper,0.385,0.385347,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+6,E3FP,TS:ci95,paper,0.010,0.010232,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+6,E3FP,KS:mean,paper,0.913,0.913498,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+6,E3FP,KS:ci95,paper,0.001,0.000972,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+6,FMG,Spearman:mean,paper,0.015,0.013975,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+6,FMG,Spearman:ci95,paper,0.004,0.000781,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+6,FMG,Kendall:mean,paper,0.010,0.009321,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+6,FMG,Kendall:ci95,paper,0.003,0.000521,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+6,FMG,CKA:mean,paper,0.012,0.011691,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+6,FMG,CKA:ci95,paper,0.001,0.000167,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+6,FMG,isoR2:mean,paper,0.001,0.000822,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+6,FMG,isoR2:ci95,paper,0.000,0.000064,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+6,FMG,EJS(0.1sigma):mean,paper,0.250,0.250204,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+6,FMG,EJS(0.1sigma):ci95,paper,0.000,0.000031,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+6,FMG,EJS(0.5sigma):mean,paper,0.253,0.252309,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+6,FMG,EJS(0.5sigma):ci95,paper,0.001,0.000168,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+6,FMG,EJS(1sigma):mean,paper,0.257,0.256173,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+6,FMG,EJS(1sigma):ci95,paper,0.002,0.000420,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+6,FMG,EJS(2sigma):mean,paper,0.269,0.266977,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+6,FMG,EJS(2sigma):ci95,paper,0.006,0.001189,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+6,FMG,EJS(3sigma):mean,paper,0.283,0.281762,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+6,FMG,EJS(3sigma):ci95,paper,0.016,0.002975,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+6,FMG,ROC_AUC:mean,paper,0.517,0.515996,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+6,FMG,ROC_AUC:ci95,paper,0.005,0.000930,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+6,FMG,Smoothness:mean,paper,0.972,0.999889,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+6,FMG,Smoothness:ci95,paper,0.002,0.000007,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+6,FMG,TS:mean,paper,0.583,0.582899,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+6,FMG,TS:ci95,paper,0.007,0.001634,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+6,FMG,KS:mean,paper,1.000,0.999827,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+6,FMG,KS:ci95,paper,0.000,0.000015,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+6,GemNet,Spearman:mean,paper,0.078,0.077526,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+6,GemNet,Spearman:ci95,paper,0.002,0.002243,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+6,GemNet,Kendall:mean,paper,0.052,0.051807,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+6,GemNet,Kendall:ci95,paper,0.002,0.001504,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+6,GemNet,CKA:mean,paper,0.016,0.016325,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+6,GemNet,CKA:ci95,paper,0.000,0.000417,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+6,GemNet,isoR2:mean,paper,0.013,0.013470,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+6,GemNet,isoR2:ci95,paper,0.001,0.000981,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+6,GemNet,EJS(0.1sigma):mean,paper,0.252,0.251834,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+6,GemNet,EJS(0.1sigma):ci95,paper,0.000,0.000067,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+6,GemNet,EJS(0.5sigma):mean,paper,0.263,0.263241,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+6,GemNet,EJS(0.5sigma):ci95,paper,0.000,0.000446,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+6,GemNet,EJS(1sigma):mean,paper,0.286,0.285514,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+6,GemNet,EJS(1sigma):ci95,paper,0.001,0.001190,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+6,GemNet,EJS(2sigma):mean,paper,0.356,0.355988,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+6,GemNet,EJS(2sigma):ci95,paper,0.004,0.003577,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+6,GemNet,EJS(3sigma):mean,paper,0.451,0.450997,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+6,GemNet,EJS(3sigma):ci95,paper,0.007,0.007127,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+6,GemNet,ROC_AUC:mean,paper,0.592,0.591777,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+6,GemNet,ROC_AUC:ci95,paper,0.003,0.002668,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+6,GemNet,Smoothness:mean,paper,0.998,0.998238,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+6,GemNet,Smoothness:ci95,paper,0.000,0.000188,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+6,GemNet,TS:mean,paper,0.444,0.443715,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+6,GemNet,TS:ci95,paper,0.004,0.003603,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+6,GemNet,KS:mean,paper,0.998,0.998367,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+6,GemNet,KS:ci95,paper,0.000,0.000172,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+6,MACE,Spearman:mean,paper,0.236,0.236143,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+6,MACE,Spearman:ci95,paper,0.011,0.002361,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+6,MACE,Kendall:mean,paper,0.160,0.159662,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+6,MACE,Kendall:ci95,paper,0.008,0.001626,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+6,MACE,CKA:mean,paper,0.017,0.017391,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+6,MACE,CKA:ci95,paper,0.001,0.000285,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+6,MACE,isoR2:mean,paper,0.083,0.080723,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+6,MACE,isoR2:ci95,paper,0.010,0.002210,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+6,MACE,EJS(0.1sigma):mean,paper,0.255,0.255266,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+6,MACE,EJS(0.1sigma):ci95,paper,0.000,0.000079,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+6,MACE,EJS(0.5sigma):mean,paper,0.286,0.286281,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+6,MACE,EJS(0.5sigma):ci95,paper,0.002,0.000527,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+6,MACE,EJS(1sigma):mean,paper,0.350,0.349974,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+6,MACE,EJS(1sigma):ci95,paper,0.007,0.001425,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+6,MACE,EJS(2sigma):mean,paper,0.578,0.572063,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+6,MACE,EJS(2sigma):ci95,paper,0.019,0.004105,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+6,MACE,EJS(3sigma):mean,paper,0.845,0.837292,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+6,MACE,EJS(3sigma):ci95,paper,0.025,0.005381,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+6,MACE,ROC_AUC:mean,paper,0.764,0.760630,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+6,MACE,ROC_AUC:ci95,paper,0.011,0.002222,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+6,MACE,Smoothness:mean,paper,0.999,0.999394,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+6,MACE,Smoothness:ci95,paper,0.000,0.000031,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+6,MACE,TS:mean,paper,0.424,0.424343,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+6,MACE,TS:ci95,paper,0.014,0.003126,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+6,MACE,KS:mean,paper,0.999,0.999448,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+6,MACE,KS:ci95,paper,0.000,0.000022,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+6,MolAE,Spearman:mean,paper,0.039,0.038868,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+6,MolAE,Spearman:ci95,paper,0.001,0.001260,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+6,MolAE,Kendall:mean,paper,0.026,0.025930,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+6,MolAE,Kendall:ci95,paper,0.001,0.000841,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+6,MolAE,CKA:mean,paper,0.024,0.024077,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+6,MolAE,CKA:ci95,paper,0.000,0.000342,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+6,MolAE,isoR2:mean,paper,0.003,0.002824,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+6,MolAE,isoR2:ci95,paper,0.000,0.000180,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+6,MolAE,EJS(0.1sigma):mean,paper,0.251,0.250616,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+6,MolAE,EJS(0.1sigma):ci95,paper,0.000,0.000043,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+6,MolAE,EJS(0.5sigma):mean,paper,0.256,0.255715,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+6,MolAE,EJS(0.5sigma):ci95,paper,0.000,0.000266,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+6,MolAE,EJS(1sigma):mean,paper,0.265,0.265368,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+6,MolAE,EJS(1sigma):ci95,paper,0.001,0.000683,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+6,MolAE,EJS(2sigma):mean,paper,0.294,0.293714,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+6,MolAE,EJS(2sigma):ci95,paper,0.002,0.001914,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+6,MolAE,EJS(3sigma):mean,paper,0.328,0.327981,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+6,MolAE,EJS(3sigma):ci95,paper,0.004,0.004323,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+6,MolAE,ROC_AUC:mean,paper,0.545,0.545296,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+6,MolAE,ROC_AUC:ci95,paper,0.001,0.001443,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+6,MolAE,Smoothness:mean,paper,0.996,0.996316,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+6,MolAE,Smoothness:ci95,paper,0.000,0.000125,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+6,MolAE,TS:mean,paper,0.346,0.346272,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+6,MolAE,TS:ci95,paper,0.001,0.001449,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+6,MolAE,KS:mean,paper,0.998,0.998199,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+6,MolAE,KS:ci95,paper,0.000,0.000061,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+6,MolSpectra,Spearman:mean,paper,0.023,0.022909,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+6,MolSpectra,Spearman:ci95,paper,0.001,0.001254,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+6,MolSpectra,Kendall:mean,paper,0.015,0.015282,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+6,MolSpectra,Kendall:ci95,paper,0.001,0.000836,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+6,MolSpectra,CKA:mean,paper,0.006,0.006444,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+6,MolSpectra,CKA:ci95,paper,0.000,0.000169,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+6,MolSpectra,isoR2:mean,paper,0.001,0.001481,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+6,MolSpectra,isoR2:ci95,paper,0.000,0.000174,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+6,MolSpectra,EJS(0.1sigma):mean,paper,0.250,0.250276,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+6,MolSpectra,EJS(0.1sigma):ci95,paper,0.000,0.000041,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+6,MolSpectra,EJS(0.5sigma):mean,paper,0.253,0.252824,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+6,MolSpectra,EJS(0.5sigma):ci95,paper,0.000,0.000258,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+6,MolSpectra,EJS(1sigma):mean,paper,0.258,0.257560,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+6,MolSpectra,EJS(1sigma):ci95,paper,0.001,0.000658,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+6,MolSpectra,EJS(2sigma):mean,paper,0.271,0.270563,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+6,MolSpectra,EJS(2sigma):ci95,paper,0.002,0.001780,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+6,MolSpectra,EJS(3sigma):mean,paper,0.289,0.289048,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+6,MolSpectra,EJS(3sigma):ci95,paper,0.004,0.003845,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+6,MolSpectra,ROC_AUC:mean,paper,0.527,0.526507,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+6,MolSpectra,ROC_AUC:ci95,paper,0.001,0.001402,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+6,MolSpectra,Smoothness:mean,paper,0.974,0.973790,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+6,MolSpectra,Smoothness:ci95,paper,0.001,0.000667,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+6,MolSpectra,TS:mean,paper,0.409,0.408949,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+6,MolSpectra,TS:ci95,paper,0.004,0.004161,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+6,MolSpectra,KS:mean,paper,0.976,0.976430,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+6,MolSpectra,KS:ci95,paper,0.001,0.000974,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025)"
+7,all,jumps(0.1sigma):mean,paper,1839169.111,1839169.111000,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025); jump counts depend only on the energies and the windows, not on the representation; the paper prints them with thousands separators"
+7,all,jumps(0.1sigma):ci95,paper,34.666,34.665787,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025); jump counts depend only on the energies and the windows, not on the representation; the paper prints them with thousands separators"
+7,all,jumps(0.5sigma):mean,paper,1232341.449,1232341.449000,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025); jump counts depend only on the energies and the windows, not on the representation; the paper prints them with thousands separators"
+7,all,jumps(0.5sigma):ci95,paper,61.925,61.924894,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025); jump counts depend only on the energies and the windows, not on the representation; the paper prints them with thousands separators"
+7,all,jumps(1sigma):mean,paper,638505.706,638505.706000,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025); jump counts depend only on the energies and the windows, not on the representation; the paper prints them with thousands separators"
+7,all,jumps(1sigma):ci95,paper,197.971,197.970570,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025); jump counts depend only on the energies and the windows, not on the representation; the paper prints them with thousands separators"
+7,all,jumps(2sigma):mean,paper,102542.184,102542.184000,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025); jump counts depend only on the energies and the windows, not on the representation; the paper prints them with thousands separators"
+7,all,jumps(2sigma):ci95,paper,492.257,492.257172,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025); jump counts depend only on the energies and the windows, not on the representation; the paper prints them with thousands separators"
+7,all,jumps(3sigma):mean,paper,8929.385,8929.385000,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025); jump counts depend only on the energies and the windows, not on the representation; the paper prints them with thousands separators"
+7,all,jumps(3sigma):ci95,paper,167.468,167.468492,0.001,"paper metric definitions (docs/metrics/energy.md); reference value computed with this code from the published trajectory embeddings and the float64 rMD17 energies (legacy windows, 100 x 2000 frames, seed 2025); jump counts depend only on the energies and the windows, not on the representation; the paper prints them with thousands separators"
+3,E3FP,Spearman,v2,,0.026068,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+3,E3FP,Kendall,v2,,0.018248,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+3,E3FP,CKA,v2,,0.016007,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+3,E3FP,isoR2,v2,,0.002812,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+3,E3FP,EJS,v2,,0.184661,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+3,E3FP,EJS_ROCAUC,v2,,0.531304,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+3,E3FP,KS,v2,,0.530219,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+3,FMG,Spearman,v2,,0.013975,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+3,FMG,Kendall,v2,,0.009319,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+3,FMG,CKA,v2,,0.009316,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+3,FMG,isoR2,v2,,0.000924,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+3,FMG,EJS,v2,,0.267582,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+3,FMG,EJS_ROCAUC,v2,,0.515996,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+3,FMG,KS,v2,,0.186257,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+3,GemNet,Spearman,v2,,0.077526,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+3,GemNet,Kendall,v2,,0.051798,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+3,GemNet,CKA,v2,,0.041768,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+3,GemNet,isoR2,v2,,0.012737,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+3,GemNet,EJS,v2,,0.359672,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+3,GemNet,EJS_ROCAUC,v2,,0.591777,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+3,GemNet,KS,v2,,0.159024,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+3,MACE,Spearman,v2,,0.236143,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+3,MACE,Kendall,v2,,0.159639,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+3,MACE,CKA,v2,,0.175913,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+3,MACE,isoR2,v2,,0.083043,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+3,MACE,EJS,v2,,0.583026,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+3,MACE,EJS_ROCAUC,v2,,0.760630,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+3,MACE,KS,v2,,0.173223,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+3,MolAE,Spearman,v2,,0.038868,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+3,MolAE,Kendall,v2,,0.025923,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+3,MolAE,CKA,v2,,0.031395,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+3,MolAE,isoR2,v2,,0.003183,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+3,MolAE,EJS,v2,,0.295529,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+3,MolAE,EJS_ROCAUC,v2,,0.545296,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+3,MolAE,KS,v2,,0.325364,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+3,MolSpectra,Spearman,v2,,0.022909,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+3,MolSpectra,Kendall,v2,,0.015279,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+3,MolSpectra,CKA,v2,,0.013705,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+3,MolSpectra,isoR2,v2,,0.001810,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+3,MolSpectra,EJS,v2,,0.271520,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+3,MolSpectra,EJS_ROCAUC,v2,,0.526507,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+3,MolSpectra,KS,v2,,0.261547,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+3,UniMol,Spearman,v2,,0.042610,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+3,UniMol,Kendall,v2,,0.028420,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+3,UniMol,CKA,v2,,0.032049,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+3,UniMol,isoR2,v2,,0.003165,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+3,UniMol,EJS,v2,,0.303481,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+3,UniMol,EJS_ROCAUC,v2,,0.549794,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+3,UniMol,KS,v2,,0.301884,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+6,E3FP,Spearman:mean,v2,,0.026068,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+6,E3FP,Spearman:ci95,v2,,0.001085,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+6,E3FP,Kendall:mean,v2,,0.018248,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+6,E3FP,Kendall:ci95,v2,,0.000751,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+6,E3FP,CKA:mean,v2,,0.016007,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+6,E3FP,CKA:ci95,v2,,0.000732,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+6,E3FP,isoR2:mean,v2,,0.002812,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+6,E3FP,isoR2:ci95,v2,,0.000145,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+6,E3FP,EJS(0.1sigma):mean,v2,,0.150929,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+6,E3FP,EJS(0.1sigma):ci95,v2,,0.005522,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+6,E3FP,EJS(0.5sigma):mean,v2,,0.154680,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+6,E3FP,EJS(0.5sigma):ci95,v2,,0.005623,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+6,E3FP,EJS(1sigma):mean,v2,,0.161898,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+6,E3FP,EJS(1sigma):ci95,v2,,0.005840,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+6,E3FP,EJS(2sigma):mean,v2,,0.184661,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+6,E3FP,EJS(2sigma):ci95,v2,,0.006718,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+6,E3FP,EJS(3sigma):mean,v2,,0.219369,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+6,E3FP,EJS(3sigma):ci95,v2,,0.008872,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+6,E3FP,ROC_AUC:mean,v2,,0.531304,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+6,E3FP,ROC_AUC:ci95,v2,,0.001400,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+6,E3FP,KS:mean,v2,,0.530219,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+6,E3FP,KS:ci95,v2,,0.008080,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+6,FMG,Spearman:mean,v2,,0.013975,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+6,FMG,Spearman:ci95,v2,,0.000781,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+6,FMG,Kendall:mean,v2,,0.009319,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+6,FMG,Kendall:ci95,v2,,0.000520,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+6,FMG,CKA:mean,v2,,0.009316,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+6,FMG,CKA:ci95,v2,,0.000441,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+6,FMG,isoR2:mean,v2,,0.000924,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+6,FMG,isoR2:ci95,v2,,0.000065,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+6,FMG,EJS(0.1sigma):mean,v2,,0.250330,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+6,FMG,EJS(0.1sigma):ci95,v2,,0.000028,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+6,FMG,EJS(0.5sigma):mean,v2,,0.252497,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+6,FMG,EJS(0.5sigma):ci95,v2,,0.000171,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+6,FMG,EJS(1sigma):mean,v2,,0.256485,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+6,FMG,EJS(1sigma):ci95,v2,,0.000432,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+6,FMG,EJS(2sigma):mean,v2,,0.267582,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+6,FMG,EJS(2sigma):ci95,v2,,0.001228,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+6,FMG,EJS(3sigma):mean,v2,,0.282903,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+6,FMG,EJS(3sigma):ci95,v2,,0.003169,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+6,FMG,ROC_AUC:mean,v2,,0.515996,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+6,FMG,ROC_AUC:ci95,v2,,0.000930,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+6,FMG,KS:mean,v2,,0.186257,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+6,FMG,KS:ci95,v2,,0.002900,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+6,GemNet,Spearman:mean,v2,,0.077526,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+6,GemNet,Spearman:ci95,v2,,0.002243,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+6,GemNet,Kendall:mean,v2,,0.051798,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+6,GemNet,Kendall:ci95,v2,,0.001504,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+6,GemNet,CKA:mean,v2,,0.041768,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+6,GemNet,CKA:ci95,v2,,0.001230,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+6,GemNet,isoR2:mean,v2,,0.012737,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+6,GemNet,isoR2:ci95,v2,,0.000859,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+6,GemNet,EJS(0.1sigma):mean,v2,,0.252056,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+6,GemNet,EJS(0.1sigma):ci95,v2,,0.000070,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+6,GemNet,EJS(0.5sigma):mean,v2,,0.263785,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+6,GemNet,EJS(0.5sigma):ci95,v2,,0.000468,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+6,GemNet,EJS(1sigma):mean,v2,,0.286809,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+6,GemNet,EJS(1sigma):ci95,v2,,0.001253,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+6,GemNet,EJS(2sigma):mean,v2,,0.359672,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+6,GemNet,EJS(2sigma):ci95,v2,,0.003771,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+6,GemNet,EJS(3sigma):mean,v2,,0.456857,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+6,GemNet,EJS(3sigma):ci95,v2,,0.007447,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+6,GemNet,ROC_AUC:mean,v2,,0.591777,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+6,GemNet,ROC_AUC:ci95,v2,,0.002668,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+6,GemNet,KS:mean,v2,,0.159024,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+6,GemNet,KS:ci95,v2,,0.003895,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+6,MACE,Spearman:mean,v2,,0.236143,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+6,MACE,Spearman:ci95,v2,,0.002361,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+6,MACE,Kendall:mean,v2,,0.159639,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+6,MACE,Kendall:ci95,v2,,0.001625,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+6,MACE,CKA:mean,v2,,0.175913,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+6,MACE,CKA:ci95,v2,,0.001936,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+6,MACE,isoR2:mean,v2,,0.083043,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+6,MACE,isoR2:ci95,v2,,0.001556,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+6,MACE,EJS(0.1sigma):mean,v2,,0.255564,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+6,MACE,EJS(0.1sigma):ci95,v2,,0.000084,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+6,MACE,EJS(0.5sigma):mean,v2,,0.287487,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+6,MACE,EJS(0.5sigma):ci95,v2,,0.000562,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+6,MACE,EJS(1sigma):mean,v2,,0.353460,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+6,MACE,EJS(1sigma):ci95,v2,,0.001528,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+6,MACE,EJS(2sigma):mean,v2,,0.583026,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+6,MACE,EJS(2sigma):ci95,v2,,0.004338,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+6,MACE,EJS(3sigma):mean,v2,,0.849128,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+6,MACE,EJS(3sigma):ci95,v2,,0.005353,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+6,MACE,ROC_AUC:mean,v2,,0.760630,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+6,MACE,ROC_AUC:ci95,v2,,0.002222,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+6,MACE,KS:mean,v2,,0.173223,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+6,MACE,KS:ci95,v2,,0.003402,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+6,MolAE,Spearman:mean,v2,,0.038868,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+6,MolAE,Spearman:ci95,v2,,0.001260,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+6,MolAE,Kendall:mean,v2,,0.025923,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+6,MolAE,Kendall:ci95,v2,,0.000840,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+6,MolAE,CKA:mean,v2,,0.031395,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+6,MolAE,CKA:ci95,v2,,0.001029,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+6,MolAE,isoR2:mean,v2,,0.003183,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+6,MolAE,isoR2:ci95,v2,,0.000162,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+6,MolAE,EJS(0.1sigma):mean,v2,,0.250940,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+6,MolAE,EJS(0.1sigma):ci95,v2,,0.000043,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+6,MolAE,EJS(0.5sigma):mean,v2,,0.256201,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+6,MolAE,EJS(0.5sigma):ci95,v2,,0.000277,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+6,MolAE,EJS(1sigma):mean,v2,,0.266207,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+6,MolAE,EJS(1sigma):ci95,v2,,0.000713,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+6,MolAE,EJS(2sigma):mean,v2,,0.295529,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+6,MolAE,EJS(2sigma):ci95,v2,,0.002003,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+6,MolAE,EJS(3sigma):mean,v2,,0.331006,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+6,MolAE,EJS(3sigma):ci95,v2,,0.004616,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+6,MolAE,ROC_AUC:mean,v2,,0.545296,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+6,MolAE,ROC_AUC:ci95,v2,,0.001443,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+6,MolAE,KS:mean,v2,,0.325364,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+6,MolAE,KS:ci95,v2,,0.003224,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+6,MolSpectra,Spearman:mean,v2,,0.022909,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+6,MolSpectra,Spearman:ci95,v2,,0.001254,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+6,MolSpectra,Kendall:mean,v2,,0.015279,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+6,MolSpectra,Kendall:ci95,v2,,0.000836,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+6,MolSpectra,CKA:mean,v2,,0.013705,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+6,MolSpectra,CKA:ci95,v2,,0.000523,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+6,MolSpectra,isoR2:mean,v2,,0.001810,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+6,MolSpectra,isoR2:ci95,v2,,0.000164,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+6,MolSpectra,EJS(0.1sigma):mean,v2,,0.250465,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+6,MolSpectra,EJS(0.1sigma):ci95,v2,,0.000041,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+6,MolSpectra,EJS(0.5sigma):mean,v2,,0.253109,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+6,MolSpectra,EJS(0.5sigma):ci95,v2,,0.000268,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+6,MolSpectra,EJS(1sigma):mean,v2,,0.258028,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+6,MolSpectra,EJS(1sigma):ci95,v2,,0.000686,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+6,MolSpectra,EJS(2sigma):mean,v2,,0.271520,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+6,MolSpectra,EJS(2sigma):ci95,v2,,0.001857,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+6,MolSpectra,EJS(3sigma):mean,v2,,0.290743,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+6,MolSpectra,EJS(3sigma):ci95,v2,,0.004092,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+6,MolSpectra,ROC_AUC:mean,v2,,0.526507,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+6,MolSpectra,ROC_AUC:ci95,v2,,0.001402,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+6,MolSpectra,KS:mean,v2,,0.261547,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+6,MolSpectra,KS:ci95,v2,,0.006749,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+7,all,jumps(0.1sigma):mean,v2,,1836048.939000,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+7,all,jumps(0.1sigma):ci95,v2,,156.743292,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+7,all,jumps(0.5sigma):mean,v2,,1218701.243000,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+7,all,jumps(0.5sigma):ci95,v2,,625.179967,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+7,all,jumps(1sigma):mean,v2,,620312.428000,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+7,all,jumps(1sigma):ci95,v2,,591.198447,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+7,all,jumps(2sigma):mean,v2,,94275.340000,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+7,all,jumps(2sigma):ci95,v2,,163.304862,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+7,all,jumps(3sigma):mean,v2,,7494.103000,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper
+7,all,jumps(3sigma):ci95,v2,,105.603263,0.001,v2 metric definitions (docs/metrics/energy.md); not printed in the paper

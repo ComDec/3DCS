@@ -3,13 +3,13 @@
 
 Table 1 of the paper combines two original runs (see docs/metrics/geometry.md):
 - Spearman, Kendall, CKA, isotonic R^2 and Torsion-SP are means over the 10 % molecule sample
-  (``sampled_molecules_seed2027.txt``); that run used correctly aligned embeddings;
-- LIE@k and AS are means over all evaluated molecules of the full run, in which the embeddings of
-  shards 1 and 2 were misaligned after a molecule that failed (``<metric>__offset_drift`` columns,
-  written by ``evaluate rotation --replicate-offset-drift``).
+  (``sampled_molecules_seed2027.txt``), indexed by the dataset offset;
+- LIE@k and AS are means over all evaluated molecules of the full run, whose embedding indexing in
+  parts of shards 1 and 2 is reproduced by the ``<metric>__offset_drift`` columns that
+  ``evaluate rotation --replicate-offset-drift`` writes.
 Variant ``paper`` reproduces the published values; variant ``paper_aligned`` gives LIE@k and AS with
-correctly aligned embeddings; variant ``v2`` gives all rows (means over all evaluated molecules)
-with the corrected definitions. Means exclude non-finite per-molecule values.
+the embeddings indexed by the dataset offset; variant ``v2`` gives all rows (means over all evaluated
+molecules) with the v2 definitions. Means exclude non-finite per-molecule values.
 """
 
 from __future__ import annotations
