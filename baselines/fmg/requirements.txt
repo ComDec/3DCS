@@ -1,0 +1,38 @@
+# Environment for reproduce/embeddings/fmg/extract_chirality.py
+#
+# Install order matters: torch first (from the PyTorch CUDA 11.8 index), then the rest
+# from PyPI.  Python 3.10.
+#
+#   conda create -y -p ./env python=3.10
+#   ./env/bin/pip install "pip==24.0" "setuptools==67.8.0" wheel
+#   ./env/bin/pip install torch==2.0.0 torchvision==0.15.1 --index-url https://download.pytorch.org/whl/cu118
+#   ./env/bin/pip install -r requirements.txt
+#
+# torch 2.0.0 + cuDNN 8.7 (the versions pinned by the upstream FMG requirements.txt) is
+# what the released embeddings were computed with; the +cu118 wheels run unchanged on a
+# CUDA 13 driver.  The packages below the first block are needed only because importing
+# the upstream FMG modules pulls them in.
+
+# --- direct dependencies of the extraction script -------------------------------
+numpy==1.26.4
+einops==0.7.0
+rdkit==2024.9.6
+datasets==4.0.0          # only for --dataset <HF chirality config>
+
+# --- pulled in by `import utils` / `denoising_diffusion_pytorch` of the FMG repo --
+scipy==1.10.1
+pandas==2.2.1
+networkx==3.2.1
+matplotlib==3.7.1
+pysmiles==1.1.2
+plotly==5.19.0
+py3Dmol==2.0.4
+omegaconf==2.3.0
+msgpack-python==0.5.6
+torch_geometric==2.3.0
+pytorch_fid==0.3.0
+ema-pytorch==0.4.2
+accelerate==0.18.0
+torch-dct==0.1.6
+scikit-learn==1.2.2
+tqdm==4.65.0

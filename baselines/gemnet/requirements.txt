@@ -1,0 +1,13 @@
+# GemNet-Q chirality embedding extraction — pinned environment (python 3.10).
+# torch and torch_scatter need their own index URLs, see README.md:
+#   pip install torch==2.1.0 --index-url https://download.pytorch.org/whl/cu121
+#   pip install torch_scatter -f https://data.pyg.org/whl/torch-2.1.0+cu121.html
+numpy==1.24.4
+scipy==1.10.1
+sympy==1.12
+numba==0.58.1
+rdkit==2025.03.5
+# only for --dataset hf:<repo>:<config> or a save_to_disk directory
+datasets>=2.14
+# only for --dataset lmdb:<shard>
+lmdb>=1.4

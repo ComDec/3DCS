@@ -1,0 +1,15 @@
+# Environment used to produce the MACE chirality embeddings.
+# Python 3.11.  Install torch first, from the CUDA 12.4 wheel index:
+#
+#   conda create -y -p ./env python=3.11
+#   ./env/bin/pip install "torch==2.5.1" --index-url https://download.pytorch.org/whl/cu124
+#   ./env/bin/pip install -r requirements.txt
+#
+# mace-torch pulls e3nn==0.4.4, ase, opt-einsum, torchmetrics and friends.
+torch==2.5.1
+mace-torch==0.3.15
+rdkit==2024.9.6
+numpy<2
+tqdm
+# only needed for --dataset hf:... / hfdisk:...
+# datasets>=3.0

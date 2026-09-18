@@ -10,7 +10,7 @@ dev:
 test:
 	pytest
 
-LINT_PATHS = src/ tests/ examples/ reproduce/
+LINT_PATHS = src/ tests/ examples/ reproduce/ baselines/
 
 lint:
 	ruff check $(LINT_PATHS)
