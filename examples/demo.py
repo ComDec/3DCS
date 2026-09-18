@@ -9,6 +9,7 @@ Usage:
     python examples/demo.py trajectory
     python examples/demo.py all
 """
+
 from __future__ import annotations
 
 import argparse

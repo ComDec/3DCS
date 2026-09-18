@@ -1,284 +1,195 @@
-# Usage Guide
+# Usage guide
 
-This guide describes dataset conversion, embedding formats, and evaluation workflows.
-For embedding generation details, see `docs/EMBEDDINGS.md`.
+This guide covers downloading data, the `evaluate` options of each benchmark, and the Python API.
+Embedding formats are described in [EMBEDDINGS.md](EMBEDDINGS.md), metric definitions in
+[METRICS.md](METRICS.md), and the reproduction of the paper tables in
+[../reproduce/README.md](../reproduce/README.md).
 
-## Quick demo
+Default data and output directories are resolved relative to `$THREE_DBENCH_HOME` if it is set, and
+relative to the current working directory otherwise. Importing the package does not create files.
 
-The fastest way to see 3DCS in action is to run the bundled demo with pre-computed
-GemNet embeddings:
-
-```bash
-pip install -e .
-python examples/demo.py all
-```
-
-This downloads the HF dataset and evaluates the included fixture embeddings for both
-chirality and trajectory benchmarks. See `examples/demo.py` for details.
-
-## 1. Dataset conversion
-
-Convert the raw RDKit molecule data into Hugging Face datasets:
+## 1. Download
 
 ```bash
-python -m three_dbench convert chirality \
-  --input-pkl data/chirality/chirality_bench_conformers_noised_only.pkl \
-  --output-dir data/hf/chirality
-
-python -m three_dbench convert traj \
-  --mol-pkl-dir data/traj/mol_pkl \
-  --energy-dir data/traj/npz_data \
-  --output-dir data/hf/traj
-
-python -m three_dbench convert rotation \
-  --lmdb-root data/rotation/results \
-  --output-dir data/hf/rotation
+python -m three_dbench download dataset --task {chirality,traj,rotation,all} [--out data/hf] [--revision REV] [--overwrite]
+python -m three_dbench download embeddings --task {chirality,traj,rotation,chirality_legacy_15218,all} \
+    [--models gemnet unimol ...] [--results] [--out data/embeddings] [--revision REV] [--no-verify] [--dry-run]
 ```
 
-Use `--no-mol-blocks` to skip MolBlock storage when disk space is limited. Rotation
-evaluation requires MolBlocks to compute RMSD.
+`download dataset` loads the configs of [`EscheWang/3dcs`](https://huggingface.co/datasets/EscheWang/3dcs)
+and writes them with `save_to_disk`:
 
-## 2. Embedding formats
+| Task | Config | Written to |
+|---|---|---|
+| `chirality` | `chirality` | `data/hf/chirality` |
+| `traj` | `traj_energies`, `traj_frames` | `data/hf/traj/energies`, `data/hf/traj/frames` |
+| `rotation` | `rotation` | `data/hf/rotation` (~7.5 GB download; ~25 GB on disk) |
 
-### Chirality
+Existing directories are kept unless `--overwrite` is given.
 
-- **Flat array**: one embedding per conformer, aligned with the dataset order
-- Use the `offset` field in the dataset rows to verify alignment if needed
-- Supported files: `.npz`, `.npy`, `.pkl`
-- Use `--embedding-key` for NPZ or pickled dicts
+`download embeddings` reads `manifest.csv` of
+[`EscheWang/3dcs-embeddings`](https://huggingface.co/datasets/EscheWang/3dcs-embeddings), downloads
+the files under `<task>/<model>/` (plus `results/<task>/` with `--results`) to `<out>/<path>`, and
+verifies each file's SHA-256 (files that are already present with the right checksum are not
+downloaded again). `--dry-run` lists the selected files and their sizes.
 
-### Rotation
+Equivalent Python:
 
-- **Flat array** (default): embeddings aligned with `offset` and `n_conformers`
-- **By key**: a dict mapping `key` to a `(n_conformers, dim)` array
-- Supported files: `.npz` or `.pkl` dicts for by-key layout
+```python
+from three_dbench.download import download_dataset, download_embeddings
 
-### Trajectory
+download_dataset("chirality", "data/hf")
+download_embeddings("rotation", "data/embeddings", models=["gemnet"])
+```
 
-- Directory of `rmd17_*.npz` files (default)
-- Or a dict mapping `mol_type` to `(n_frames, dim)` arrays
-
-## 3. Run evaluation
-
-### Chirality
+## 2. Chirality
 
 ```bash
 python -m three_dbench evaluate chirality \
   --dataset-dir data/hf/chirality \
-  --embeddings data/chirality/unimol/1.npz \
-  --embedding-key arr_0 \
-  --model-name unimol
+  --embeddings data/embeddings/chirality/unimol/1.npz --embedding-key arr_0 \
+  --model-name unimol --output-dir results/chirality/unimol
 ```
 
-### Rotation
+Options (see [metrics/chirality.md](metrics/chirality.md)):
 
-```bash
-python -m three_dbench evaluate rotation \
-  --dataset-dir data/hf/rotation \
-  --embeddings /path/to/rotation_embeddings.npz \
-  --embedding-key arr_0 \
-  --model-name my_model
-```
+| Option | Default | Meaning |
+|---|---|---|
+| `--distance {euclidean,cosine}` | `euclidean` | distance for continuous embeddings; `euclidean` reproduces Table 2. Fingerprints always use Tanimoto. |
+| `--metric-version {paper,v2}` | `paper` | metric definitions |
+| `--unsup-kmax` | `n-1` | largest k for the best-k silhouette |
+| `--per-mol-min-n` | 2 | minimum conformers per molecule |
+| `--max-molecules` | all | evaluate the first N molecules (testing) |
+| `--do-unsup-when-single-en` | off | also compute the unsupervised metrics for parents with a single stereoisomer |
+| `--n-jobs` | 1 | worker processes (`-1` = all CPUs) |
 
-To use a dict keyed by rotation entry IDs:
+Outputs: `<model>_per_molecule.json`, `summary.csv`.
 
-```bash
-python -m three_dbench evaluate rotation \
-  --dataset-dir data/hf/rotation \
-  --embeddings /path/to/rotation_by_key.pkl \
-  --layout by-key \
-  --model-name my_model
-```
-
-### Trajectory
+## 3. Trajectory (energy)
 
 ```bash
 python -m three_dbench evaluate traj \
   --dataset-dir data/hf/traj/energies \
-  --embeddings data/traj/results/unimol \
-  --embedding-key arr_0 \
-  --model-name unimol
+  --embeddings data/embeddings/traj/unimol --embedding-key arr_0 \
+  --model-name unimol --n-jobs 16 --output-dir results/traj/unimol
 ```
 
-## 4. End-to-end examples (download from HF and evaluate)
+`--embeddings` is a directory with one `rmd17_<molecule>.npz` (or `.pkl` fingerprint list) per
+molecule, or a single `.npz`/`.pkl` dict keyed by molecule.
 
-The scripts under `examples/` will download the dataset from HF if it is not cached
-locally, then run evaluation using existing embeddings.
+Options (see [metrics/energy.md](metrics/energy.md)):
 
-### Chirality
+| Option | Default | Meaning |
+|---|---|---|
+| `--window-scheme {legacy,shared}` | `legacy` | window sampling; `legacy` reproduces the published runs |
+| `--n-samples`, `--window`, `--random-seed` | 100, 2000, 2025 | windows per molecule, frames per window, seed |
+| `--metric-embed {cosine,euclidean,tanimoto}` | cosine (Tanimoto for fingerprints) | representation distance |
+| `--metric-version {paper,v2}` | `paper` | metric definitions |
+| `--molecules` | all | subset of rMD17 molecules |
+| `--energy-precision-check {error,warn,ignore}` | `error` | action when the energies look float32-quantized |
+| `--time-ordered` | off | treat the frames as a time series (enables the `v2` TS / smoothness metrics; rMD17 frames are not ordered) |
+| `--legacy-traj-len` | 100000 | trajectory length assumed by the `legacy` window scheme |
+| `--block-size` | 4096 | block size of the pairwise distance computation |
+| `--n-jobs` | 1 | worker processes (`-1` = all CPUs) |
 
-```bash
-python examples/run_chirality_from_hf.py \
-  --repo-id EscheWang/3dcs \
-  --config chirality \
-  --embeddings data/chirality/unimol/1.npz \
-  --embedding-key arr_0 \
-  --model-name unimol \
-  --output-dir results/chirality/unimol
-```
+Outputs: `details.csv`, `summary.csv`, `config.json`.
 
-### Trajectory
-
-```bash
-python examples/run_traj_from_hf.py \
-  --repo-id EscheWang/3dcs \
-  --config traj_energies \
-  --embeddings-dir data/traj/results/unimol \
-  --embedding-key arr_0 \
-  --model-name unimol \
-  --output-dir results/traj/unimol
-```
-
-### Rotation
-
-```bash
-python examples/run_rotation_from_hf.py \
-  --repo-id EscheWang/3dcs \
-  --config rotation \
-  --embeddings-dir data/rotation/results/gemnet \
-  --embedding-key gemnet \
-  --model-name gemnet \
-  --output-dir results/rotation/gemnet
-```
-
-#### Rotation quick test
-
-```bash
-python examples/run_rotation_from_hf.py \
-  --repo-id EscheWang/3dcs \
-  --config rotation \
-  --embeddings-dir data/rotation/results/gemnet \
-  --embedding-key gemnet \
-  --model-name gemnet \
-  --output-dir results/rotation/gemnet_quick \
-  --shards 0 \
-  --max-keys 200
-```
-
-## 5. End-to-end with your own embeddings
-
-This section shows the full pipeline when you generate embeddings with your own model.
-It includes download, embedding generation, format validation, and evaluation.
-
-### Step 1: Download datasets from HF
-
-```bash
-# Chirality dataset
-python - <<'PY'
-from datasets import load_dataset
-
-ds = load_dataset("EscheWang/3dcs", name="chirality", split="train")
-ds.save_to_disk("data/hf/chirality")
-PY
-
-# Trajectory energies
-python - <<'PY'
-from datasets import load_dataset
-
-ds = load_dataset("EscheWang/3dcs", name="traj_energies", split="train")
-ds.save_to_disk("data/hf/traj/energies")
-PY
-
-# Rotation dataset
-python - <<'PY'
-from datasets import load_dataset
-
-ds = load_dataset("EscheWang/3dcs", name="rotation", split="train")
-ds.save_to_disk("data/hf/rotation")
-PY
-```
-
-### Step 2: Generate embeddings
-
-Use MolBlocks from the HF datasets to feed your model and generate fixed-length vectors.
-Detailed formats and examples are in `docs/EMBEDDINGS.md`.
-
-Minimal skeleton for chirality:
-
-```python
-from datasets import load_from_disk
-from three_dbench.datasets.serialization import mol_from_block
-import numpy as np
-
-ds = load_from_disk("data/hf/chirality")
-vectors = []
-
-for row in ds:
-    mols = [mol_from_block(b, sanitize=False) for b in row["mol_blocks"]]
-    for mol in mols:
-        vec = your_model(mol)  # shape (dim,)
-        vectors.append(vec)
-
-embeddings = np.stack(vectors, axis=0)
-np.savez("embeddings/my_model_chirality.npz", arr_0=embeddings)
-```
-
-### Step 3: Validate embedding alignment
-
-Embedding arrays must align with the dataset order. For flat arrays, the total number
-of vectors must equal the sum of `n_conformers` in the dataset.
-
-```python
-from datasets import load_from_disk
-import numpy as np
-
-ds = load_from_disk("data/hf/chirality")
-expected = int(sum(ds["n_conformers"]))
-arr = np.load("embeddings/my_model_chirality.npz")["arr_0"]
-assert arr.shape[0] == expected
-```
-
-### Step 4: Run evaluation
-
-```bash
-python -m three_dbench evaluate chirality \
-  --dataset-dir data/hf/chirality \
-  --embeddings embeddings/my_model_chirality.npz \
-  --embedding-key arr_0 \
-  --model-name my_model \
-  --output-dir results/chirality/my_model
-```
-
-### Trajectory with custom embeddings
-
-```bash
-python -m three_dbench evaluate traj \
-  --dataset-dir data/hf/traj/energies \
-  --embeddings embeddings/traj_my_model \
-  --embedding-key arr_0 \
-  --model-name my_model \
-  --output-dir results/traj/my_model
-```
-
-`embeddings/traj_my_model` should contain one `rmd17_*.npz` per molecule.
-
-### Rotation with custom embeddings
-
-For rotation, embeddings must be aligned with `offset` and `n_conformers` in the
-rotation dataset. If you generate per-key embeddings, build a dict mapping `key` to
-`(n_conformers, dim)` and save as a pickle.
+## 4. Rotation (geometry)
 
 ```bash
 python -m three_dbench evaluate rotation \
   --dataset-dir data/hf/rotation \
-  --embeddings embeddings/rotation_by_key.pkl \
-  --layout by-key \
-  --model-name my_model \
-  --output-dir results/rotation/my_model
+  --embeddings data/embeddings/rotation/gemnet --layout by-shard --embedding-key gemnet \
+  --model-name gemnet --metrics cosine --n-jobs 24 --output-dir results/rotation/gemnet
 ```
 
-### Common pitfalls
+Embedding layouts (details in [metrics/geometry.md](metrics/geometry.md#data-and-alignment)):
 
-- If the evaluation errors with a length mismatch, check the total number of conformers.
-- Rotation evaluation requires MolBlocks; do not use `--no-mol-blocks` during conversion.
-- Trajectory evaluation uses energy windows; make sure embeddings cover all frames.
+| `--layout` | `--embeddings` | Alignment |
+|---|---|---|
+| `by-shard` (default for a directory) | directory with one file per shard (`rotation_conformers_{shard}.npz`, `rot{shard}.npz`, … or `--shard-file-pattern`) | per-shard `offset` of each row |
+| `flat` (default for a file) | one `.npz`/`.npy`/`.pkl` array in dataset row order | cumulative `n_conformers` over the dataset rows |
+| `by-key` | `.npz`/`.pkl` dict keyed by `key` | by key |
 
-## 6. Outputs
+The published dataset stores per-shard offsets (they restart at 0 in every shard). Datasets written
+by `convert rotation` store global offsets; `--offset-mode auto` (default) detects both.
 
-Each evaluation writes:
+Options:
 
-- `summary.csv`: aggregated statistics
-- `details.csv` or `*_per_molecule.json`: per-sample metrics
-- `config.json` (trajectory)
+| Option | Default | Meaning |
+|---|---|---|
+| `--metrics` | `cosine euclidean` | distance spaces for continuous embeddings (Table 1 uses cosine) |
+| `--metric-version {paper,v2}` | `paper` | metric definitions |
+| `--lie-k`, `--lie-self {include,exclude}` | from the metric version | override LIE@k |
+| `--as-variant` | from the metric version | override angular smoothness (`mean_delta_circular`, `median_delta_circular`, `median_halfdelta_circular`, `median_dz_linear`) |
+| `--extra-metrics` | off | also distance correlation, Mantel, stress, triplet order (slow) |
+| `--shards` | all shards with embeddings | shard ids to evaluate |
+| `--molecule-list FILE` | – | evaluate only these keys (one per line, `.gz` allowed), e.g. `reproduce/table1_geometry/sampled_molecules_seed2027.txt` |
+| `--sample-ratio R --sample-seed S` | – , 2027 | per-shard random sample (`default_rng(S + shard)`); does not regenerate the published 10 % sample |
+| `--min-conformers` | 2 | skip molecules with fewer conformers |
+| `--max-keys` | – | evaluate at most N molecules (testing) |
+| `--n-jobs` | 1 | worker processes (Linux, fork) |
+| `--replicate-offset-drift` | off | by-shard only: also compute `<metric>__offset_drift` columns with the embedding shift of the published full run (Table 1 LIE@k / AS) |
 
-Output directory defaults to `results/{task}/{model_name}` unless overridden.
+Outputs: `<model>_per_key.parquet` (one row per molecule and distance space), `summary.csv`
+(mean, median, number of finite values per metric) and `config.json` (definitions, selection counts,
+molecules that could not be evaluated, runtime).
+
+A full GemNet run over the 16 shards (1,464,495 molecules) with 24 workers is expected to take about
+20–25 minutes per metric version for the cosine space.
+
+`examples/run_rotation_from_hf.py` wraps the same evaluation and can also build a flat `.npy` cache
+of the selected shards (`--flat-cache DIR`).
+
+## 5. Python API
+
+```python
+from pathlib import Path
+
+from three_dbench.benchmarks import evaluate_chirality_embeddings, evaluate_rotation_embeddings
+from three_dbench.benchmarks.rotation import ShardedEmbeddings
+from three_dbench.embeddings import load_embeddings, published_embedding
+
+spec = published_embedding("rotation", "gemnet")  # path, key, layout of the published files
+result = evaluate_rotation_embeddings(
+    dataset_dir=Path("data/hf/rotation"),
+    embeddings_by_shard=ShardedEmbeddings.from_directory(spec.local_path("data/embeddings"), key=spec.key),
+    metrics=["cosine"],
+    metric_version="v2",
+    shards=[0],
+    n_jobs=8,
+)
+print(result["summary"])
+```
+
+Per-molecule geometry metrics can be computed directly with
+`three_dbench.rotation.metrics.compute_geometry_metrics(D, Delta, torsion_deg=..., spec=PRESETS["v2"], Z=...)`.
+
+## 6. Generating your own embeddings
+
+Load a dataset with `datasets.load_from_disk`, rebuild molecules with
+`three_dbench.datasets.serialization.mol_from_block`, and write one vector per conformer in the
+order described in [EMBEDDINGS.md](EMBEDDINGS.md). For rotation, writing one file per shard in
+per-shard offset order lets you use `--layout by-shard`.
+
+Common pitfalls:
+
+- A flat array must have exactly one row per conformer, in dataset row order.
+- For rotation, do not use the stored `offset` as a global index: it restarts in every shard.
+- Rotation evaluation needs the MolBlocks (RMSD); do not convert with `--no-mol-blocks`.
+- Energies must be float64 (`EscheWang/3dcs` config `traj_energies`); the trajectory evaluator checks
+  for float32 quantization.
+
+## 7. Converting raw data
+
+The converters used to build the Hugging Face datasets are kept for completeness; the raw inputs are
+not distributed.
+
+```bash
+python -m three_dbench convert chirality --input-pkl data/chirality/chirality_bench_conformers_noised_only.pkl --output-dir data/hf/chirality
+python -m three_dbench convert traj --mol-pkl-dir data/traj/mol_pkl --energy-dir data/traj/npz_data --output-dir data/hf/traj
+python -m three_dbench convert rotation --lmdb-root data/rotation/results --output-dir data/hf/rotation
+```
+
+`convert rotation` writes global offsets in numeric shard order, which differs from the published
+dataset (per-shard offsets); the evaluator accepts both.

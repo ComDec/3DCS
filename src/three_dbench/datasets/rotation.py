@@ -7,7 +7,6 @@ from collections.abc import Iterable
 from pathlib import Path
 
 import datasets
-import lmdb
 
 from .serialization import mols_to_blocks
 
@@ -25,6 +24,8 @@ def convert_rotation_lmdb_to_hf(
     torsion angles, and embedding offsets. This makes it possible to align
     flattened embedding arrays with the dataset order.
     """
+    import lmdb  # imported lazily so that loading the HF dataset does not require lmdb
+
     fp_dir = lmdb_root / "fingerprint"
     deg_dir = lmdb_root / "sources"
     shard_ids = list(shards) if shards is not None else list(range(16))
