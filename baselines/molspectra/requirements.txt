@@ -14,5 +14,8 @@ rdkit==2024.3.5
 scipy
 scikit-learn
 setuptools<81
-# only for --dataset <save_to_disk dir>
+# only for the Hugging Face --dataset forms (hf:<repo>[:<config>], hfdisk:<dir>, a
+# save_to_disk directory or a bare Hub id)
 # datasets
+# only for --verify
+# huggingface_hub

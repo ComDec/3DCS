@@ -11,5 +11,8 @@ mace-torch==0.3.15
 rdkit==2024.9.6
 numpy<2
 tqdm
-# only needed for --dataset hf:... / hfdisk:...
+# only for the Hugging Face --dataset forms (hf:<repo>[:<config>], hfdisk:<dir>, a
+# save_to_disk directory or a bare Hub id)
 # datasets>=3.0
+# only for --verify
+# huggingface_hub

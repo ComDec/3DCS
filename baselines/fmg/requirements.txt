@@ -1,4 +1,4 @@
-# Environment for reproduce/embeddings/fmg/extract_chirality.py
+# Environment for baselines/fmg/extract_chirality.py
 #
 # Install order matters: torch first (from the PyTorch CUDA 11.8 index), then the rest
 # from PyPI.  Python 3.10.
@@ -35,4 +35,4 @@ ema-pytorch==0.4.2
 accelerate==0.18.0
 torch-dct==0.1.6
 scikit-learn==1.2.2
-tqdm==4.65.0
+tqdm>=4.66.3             # the floor datasets 4.0.0 requires; 4.70.1 resolves here

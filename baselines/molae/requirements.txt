@@ -18,5 +18,8 @@ tqdm
 ml_collections
 tensorboardX
 iopath
-# only for --dataset hf:...
+# only for the Hugging Face --dataset forms (hf:<repo>[:<config>], hfdisk:<dir>, a
+# save_to_disk directory or a bare Hub id)
 # datasets
+# only for --verify
+# huggingface_hub
