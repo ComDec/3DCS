@@ -162,8 +162,25 @@ Further notes:
   embedding rows shifted by 3 and 7 positions in parts of shards 1 and 2;
   `--replicate-offset-drift` recomputes the metrics with the same indexing, and the regular columns
   use the per-shard `offset` of the dataset. See [docs/metrics/geometry.md](docs/metrics/geometry.md).
-- **rMD17 splits.** The fine-tuning inputs for Tables 8 and 9 correspond to the official split 01
-  ([splits/rmd17/](splits/rmd17/README.md)).
+- **Splits.** The rMD17 fine-tuning inputs for Tables 8 and 9 correspond to the official split 01
+  ([splits/rmd17/](splits/rmd17/README.md)); the chirality fine-tuning split is in
+  [splits/chirality_finetune/](splits/chirality_finetune/README.md). Fine-tuning code and checkpoints
+  are not part of this repository; see [Recommended use](#recommended-use).
+
+### Recommended use
+
+**3DCS is designed as a zero-shot benchmark, and that is the setting we support with released
+artifacts.** The datasets, the baseline embeddings and the evaluator above let a third party
+recompute the zero-shot tables end to end.
+
+We would not recommend building claims on cross-architecture *fine-tuned* comparisons. Each encoder
+favours its own optimizer, learning-rate range, schedule and regularization, and the readout head and
+training framework differ substantially between Uni-Mol/Mol-AE-style transformers, GemNet/MACE-style
+equivariant networks, and field-based models such as FMG. A single shared recipe under-trains some
+models and over-tunes others, so the resulting ranking reflects the per-model hyperparameter budget at
+least as much as the representation. A fine-tuned comparison worth trusting fixes an equal training
+budget per model, selects the optimizer and learning rate per model on a validation split (never on
+test), evaluates on the full test split, and reports several seeds.
 
 ## Dataset structure
 
