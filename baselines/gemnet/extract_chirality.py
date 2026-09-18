@@ -55,7 +55,6 @@ from __future__ import annotations
 import argparse
 import json
 import os
-import pickle
 import random
 import sys
 import time
@@ -98,13 +97,7 @@ def parse_args(argv=None):
         "(default: <gemnet-repo>/pretrained/GemNet-Q). scaling_factors.json is "
         "resolved relative to its parent, as upstream does.",
     )
-    p.add_argument(
-        "--dataset",
-        required=True,
-        help="Conformer source: a pickle holding a list (or dict of lists) of RDKit Mol "
-        "objects, 'hf:<repo>:<config>' for the released HuggingFace dataset, a "
-        "save_to_disk directory, or 'lmdb:<path>' for a rotation shard.",
-    )
+    p.add_argument("--dataset", required=True, help=_common().DATASET_SPEC_HELP)
     p.add_argument("--out", required=True, help="Output .npz path.")
     p.add_argument("--key", default="gemnet", help="Array key inside the .npz (default: gemnet).")
     p.add_argument("--batch-size", type=int, default=32, help="Conformers per forward pass.")
@@ -182,6 +175,7 @@ def parse_args(argv=None):
     p.add_argument(
         "--verify-key", default=None, help="array key to read from the --verify reference (default: its published key)"
     )
+    p.add_argument("--verify-rows", default=None, metavar="ROWS", help=_common().ROW_SELECTION_HELP)
     return p.parse_args(argv)
 
 
@@ -263,65 +257,18 @@ def print_versions():
 
 
 # ------------------------------------------------------------------------- data
-def load_molecules(spec: str, max_mols: int = 0):
-    """Return the conformers as RDKit Mol objects, in dataset row order."""
-    from rdkit import Chem, RDLogger
+def load_molecules(spec: str, *, limit: int | None = None, start: int = 0):
+    """Return the conformers as RDKit Mol objects, in dataset row order.
+
+    ``spec`` takes the ``--dataset`` syntax shared by every script in ``baselines/``
+    (see ``baselines/common.py``): ``hf:<repo_id>[:<config>]``, ``hfdisk:<dir>`` or a plain
+    ``save_to_disk`` directory, a bare Hub dataset id, a pickle of RDKit molecules, or
+    ``lmdb:<file>`` for a rotation shard.  GemNet reads atomic numbers and coordinates only.
+    """
+    from rdkit import RDLogger
 
     RDLogger.DisableLog("rdApp.*")
-    if spec.startswith("lmdb:"):
-        return _mols_from_lmdb(spec[len("lmdb:") :], max_mols)
-    if spec.startswith("hf:"):
-        _, repo, config = spec.split(":", 2)
-        from datasets import load_dataset
-
-        ds = load_dataset(repo, config, split="train")
-        return _mols_from_hf(ds, Chem, max_mols)
-    if Path(spec).is_dir():
-        from datasets import load_from_disk
-
-        return _mols_from_hf(load_from_disk(spec), Chem, max_mols)
-    with open(spec, "rb") as fh:
-        obj = pickle.load(fh)
-    if isinstance(obj, dict):
-        mols = []
-        for value in obj.values():
-            mols.extend(value if isinstance(value, (list, tuple)) else [value])
-        return mols
-    return list(obj)
-
-
-def _mols_from_lmdb(path: str, max_mols: int = 0):
-    """Rotation shards store, per key, a list of (Mol, energy, torsion_deg). Row order is the
-    LMDB cursor order of the keys, then the position inside each list."""
-    import lmdb
-
-    env = lmdb.open(path, subdir=False, readonly=True, lock=False, readahead=False, meminit=False)
-    mols = []
-    with env.begin() as txn:
-        for _, value in txn.cursor():
-            for item in pickle.loads(value):
-                mols.append(item[0] if isinstance(item, tuple) else item)
-            if max_mols and len(mols) >= max_mols:
-                return mols
-    return mols
-
-
-def _mols_from_hf(ds, Chem, max_mols: int = 0):
-    """The chirality config stores one row per stereoisomer, with `mol_blocks` (MDL V2000)
-    and `offset`, the row of its first conformer in the embedding matrix."""
-    if "offset" in ds.column_names:
-        offsets = ds["offset"]  # one column read, not len(ds) random accesses
-        order = sorted(range(len(ds)), key=offsets.__getitem__)
-    else:
-        order = range(len(ds))
-    blocks = ds["mol_blocks"]
-    mols = []
-    for i in order:
-        for block in blocks[i]:
-            mols.append(Chem.MolFromMolBlock(block, removeHs=False, sanitize=True))
-        if max_mols and len(mols) >= max_mols:
-            return mols
-    return mols
+    return _common().load_conformers(spec, limit=limit, start=start)
 
 
 def mol_to_arrays(mol, hydrogens: str, max_atoms: int, round_coords: int = 0):
@@ -490,10 +437,9 @@ def main(argv=None):
     print("[args]", json.dumps(vars(args)))
 
     pdir = Path(args.pretrained_dir) if args.pretrained_dir else repo / "pretrained" / "GemNet-Q"
-    mols = load_molecules(args.dataset, (args.start + args.limit) if args.limit else 0)
+    mols = load_molecules(args.dataset, limit=args.limit or None, start=args.start)
     lo = args.start
-    hi = len(mols) if not args.limit else min(len(mols), lo + args.limit)
-    mols = mols[lo:hi]
+    hi = lo + len(mols)
     print(f"[data] {len(mols)} conformers (rows {lo}..{hi - 1}) from {args.dataset}")
 
     confs = [mol_to_arrays(m, args.hydrogens, args.max_atoms, args.round_coords) for m in mols]
@@ -543,7 +489,12 @@ def main(argv=None):
 
     if args.verify:
         _common().verify(
-            args.out, model=MODEL_NAME, reference=args.verify, produced_key=args.key, reference_key=args.verify_key
+            args.out,
+            model=MODEL_NAME,
+            reference=args.verify,
+            produced_key=args.key,
+            reference_key=args.verify_key,
+            rows=args.verify_rows or (f"{args.start}+" if args.start else None),
         )
 
 

@@ -38,7 +38,6 @@ import argparse
 import hashlib
 import json
 import logging
-import pickle
 import sys
 import time
 from collections.abc import Sequence
@@ -67,54 +66,22 @@ def _common():
 # --------------------------------------------------------------------------- #
 # input
 # --------------------------------------------------------------------------- #
-def load_mols(dataset: str):
+def load_molecules(dataset: str, *, limit: int | None = None, start: int = 0):
     """Return a list of RDKit Mol objects with 3D conformers, in benchmark row order.
 
-    ``dataset`` is one of
-
-    * a path to a pickle holding a list of RDKit ``Mol`` objects
-      (``chirality_bench_conformers_noised_only_aslist.pkl``), or
-    * ``hf:<repo_id>:<config>`` to pull the released Hugging Face dataset
-      (``hf:EscheWang/3dcs:chirality``), or
-    * ``hfdisk:<path>`` for a ``datasets.save_to_disk`` directory of that config.
+    ``dataset`` takes the ``--dataset`` syntax shared by every script in ``baselines/``
+    (see ``baselines/common.py``): ``hf:<repo_id>[:<config>]``, ``hfdisk:<dir>`` or a plain
+    ``save_to_disk`` directory, a bare Hub dataset id, a pickle of RDKit molecules, or
+    ``lmdb:<file>``.
 
     The Hugging Face rows store one ``mol_blocks`` list per stereoisomer plus the
     ``offset`` of its first conformer in the embedding matrix, so concatenating
     ``mol_blocks`` in ascending ``offset`` order reproduces the row order of the
     released embedding files.  MOL blocks carry coordinates with four decimals,
-    so geometries read this way differ from the pickle by up to 5e-5 A.
+    so geometries read this way differ from the pickle by up to 5e-5 A.  MACE reads
+    element symbols and coordinates, which do not depend on RDKit sanitisation.
     """
-    from rdkit import Chem
-
-    if dataset.startswith(("hf:", "hfdisk:")):
-        if dataset.startswith("hfdisk:"):
-            from datasets import load_from_disk
-
-            ds = load_from_disk(dataset[len("hfdisk:") :])
-        else:
-            from datasets import load_dataset
-
-            parts = dataset.split(":")
-            if len(parts) != 3:
-                raise ValueError("expected hf:<repo_id>:<config>")
-            ds = load_dataset(parts[1], parts[2], split="train")
-        if "mol_blocks" not in ds.column_names:
-            raise KeyError(f"expected a 'mol_blocks' column, got {ds.column_names}")
-        order = np.argsort(np.asarray(ds["offset"]))
-        mols = []
-        for row_idx in order:
-            for block in ds[int(row_idx)]["mol_blocks"]:
-                mol = Chem.MolFromMolBlock(block, removeHs=False, sanitize=False)
-                if mol is None:
-                    raise ValueError(f"could not parse a MOL block in row {int(row_idx)}")
-                mols.append(mol)
-        return mols
-
-    with open(dataset, "rb") as handle:
-        data = pickle.load(handle)
-    if not isinstance(data, list):
-        raise TypeError(f"{dataset} does not contain a list of RDKit Mol objects")
-    return data
+    return _common().load_conformers(dataset, limit=limit, start=start)
 
 
 def mol_to_atoms(mol, conf_id: int):
@@ -224,10 +191,9 @@ def run_batched(calc, mols, args) -> np.ndarray:
 
 # --------------------------------------------------------------------------- #
 def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
+    common = _common()
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    p.add_argument(
-        "--dataset", required=True, help="pickle of RDKit Mols, hf:<repo_id>:<config>, or hfdisk:<save_to_disk dir>"
-    )
+    p.add_argument("--dataset", required=True, help=common.DATASET_SPEC_HELP)
     p.add_argument("--out", required=True, type=Path, help="output .npz path")
     p.add_argument(
         "--model",
@@ -255,6 +221,7 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     p.add_argument("--device", default="cuda", help="torch device (default: cuda)")
     p.add_argument("--dtype", choices=("float32", "float64"), default="float32")
     p.add_argument("--limit", type=int, default=None, help="only process the first N molecules")
+    p.add_argument("--start", type=int, default=0, help="skip the first N molecules")
     p.add_argument(
         "--compress", action="store_true", help="write with np.savez_compressed (the released file is compressed)"
     )
@@ -273,6 +240,7 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     p.add_argument(
         "--verify-key", default=None, help="array key to read from the --verify reference (default: its published key)"
     )
+    p.add_argument("--verify-rows", default=None, metavar="ROWS", help=common.ROW_SELECTION_HELP)
     return p.parse_args(argv)
 
 
@@ -304,9 +272,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
     LOGGER.info("args: %s", json.dumps({k: str(v) for k, v in vars(args).items()}, sort_keys=True))
 
-    mols = load_mols(args.dataset)
-    if args.limit is not None:
-        mols = mols[: args.limit]
+    mols = load_molecules(args.dataset, limit=args.limit, start=args.start)
     LOGGER.info("loaded %d molecules from %s", len(mols), args.dataset)
 
     t0 = time.time()
@@ -330,6 +296,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             reference=args.verify,
             produced_key=OUTPUT_KEY,
             reference_key=args.verify_key,
+            rows=args.verify_rows or (f"{args.start}+" if args.start else None),
         )
     return 0
 

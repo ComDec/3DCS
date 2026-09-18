@@ -35,7 +35,7 @@ script expects.
 Example
 -------
     python extract_chirality.py \
-        --dataset chirality_bench_conformers_noised_only_aslist.pkl \
+        --dataset hf:EscheWang/3dcs:chirality \
         --weights checkpoint_7_1000000.pt \
         --unimol-dir /path/to/Uni-Mol/unimol/unimol \
         --dict /path/to/Uni-Mol/unimol/example_data/molecule/dict.txt \
@@ -61,36 +61,39 @@ import numpy as np
 # --------------------------------------------------------------------------- #
 # input handling
 # --------------------------------------------------------------------------- #
-def load_molecules(spec: str, hf_split: str = "train", hf_config: str = "chirality"):
-    """Return a list of RDKit molecules.
+def _common():
+    """Load ``baselines/common.py`` (input and verification helpers) without touching sys.path."""
+    import importlib.util
 
-    ``spec`` is either a path to a pickle -- a ``list`` of RDKit ``Mol`` objects,
-    or a ``dict`` mapping a name to a list of ``Mol`` (flattened in dict order) --
-    or a Hugging Face dataset id of the form ``hf:<repo_id>``.
+    path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "common.py")
+    spec = importlib.util.spec_from_file_location("baselines_common", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def load_molecules(
+    spec: str,
+    hf_split: str = "train",
+    hf_config: str = "chirality",
+    *,
+    limit: int | None = None,
+    start: int = 0,
+):
+    """Return a list of RDKit molecules, in benchmark row order.
+
+    ``spec`` takes the ``--dataset`` syntax shared by every script in ``baselines/``
+    (see ``baselines/common.py``): ``hf:<repo_id>[:<config>]``, ``hfdisk:<dir>`` or a plain
+    ``save_to_disk`` directory, a bare Hub dataset id, a pickle of RDKit molecules (a list,
+    or a dict of lists flattened in insertion order), or ``lmdb:<file>``.
+
+    The ``chirality`` config of ``EscheWang/3dcs`` stores one ``mol_blocks`` list per
+    stereoisomer -- one MDL MOL block per conformer -- and the ``offset`` of the first of
+    them, so reading ``mol_blocks`` in ascending ``offset`` gives the 52,391 conformers in
+    the row order of the published embedding file.  Mol-AE reads element symbols and
+    coordinates only.
     """
-    from rdkit import Chem  # noqa: F401  (needed so unpickling resolves rdkit types)
-
-    if spec.startswith("hf:"):
-        from datasets import load_dataset
-
-        repo = spec[3:]
-        ds = load_dataset(repo, hf_config, split=hf_split)
-        mols = []
-        for rec in ds:
-            block = rec.get("mol_block") or rec.get("molblock") or rec.get("sdf")
-            if block is None:
-                raise ValueError("HF records carry no mol block; pass the local pickle instead")
-            mols.append(Chem.MolFromMolBlock(block, removeHs=False, sanitize=True))
-        return mols
-
-    with open(spec, "rb") as fh:
-        obj = pickle.load(fh)
-    if isinstance(obj, dict):
-        mols = []
-        for key in obj:  # insertion order of the pickle
-            mols.extend(obj[key])
-        return mols
-    return list(obj)
+    return _common().load_conformers(spec, hf_config=hf_config, hf_split=hf_split, limit=limit, start=start)
 
 
 def build_lmdb(mols, lmdb_path: str) -> int:
@@ -289,18 +292,6 @@ MODEL_NAME = "molae"
 OUTPUT_KEY = "arr_0"
 
 
-def _common():
-    """Load ``baselines/common.py`` (verification helpers) without touching sys.path."""
-    import importlib.util
-    import os
-
-    path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "common.py")
-    spec = importlib.util.spec_from_file_location("baselines_common", path)
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
-
-
 def sha256(path: str) -> str:
     h = hashlib.sha256()
     with open(path, "rb") as fh:
@@ -310,14 +301,13 @@ def sha256(path: str) -> str:
 
 
 def main() -> int:
+    common = _common()
     ap = argparse.ArgumentParser(description="Mol-AE [CLS] embedding extraction for the 3DCS chirality set")
-    ap.add_argument(
-        "--dataset",
-        required=True,
-        help="pickle of RDKit molecules (list or dict of lists), or hf:<repo_id>",
-    )
-    ap.add_argument("--hf-config", default="chirality")
+    ap.add_argument("--dataset", required=True, help=common.DATASET_SPEC_HELP)
+    ap.add_argument("--hf-config", default="chirality", help="config to read when --dataset names a Hub dataset")
     ap.add_argument("--hf-split", default="train")
+    ap.add_argument("--limit", type=int, default=None, help="only process the first N conformers")
+    ap.add_argument("--start", type=int, default=0, help="skip the first N conformers")
     ap.add_argument("--out", required=True, help="output .npz (key arr_0)")
     ap.add_argument("--weights", required=True, help="Mol-AE pre-trained checkpoint")
     ap.add_argument(
@@ -359,6 +349,7 @@ def main() -> int:
     ap.add_argument(
         "--verify-key", default=None, help="array key to read from the --verify reference (default: its published key)"
     )
+    ap.add_argument("--verify-rows", default=None, metavar="ROWS", help=common.ROW_SELECTION_HELP)
     args = ap.parse_args()
 
     work_dir = args.work_dir or tempfile.mkdtemp(prefix="molae_extract_")
@@ -370,7 +361,7 @@ def main() -> int:
 
     lmdb_path = os.path.join(work_dir, args.subset + ".lmdb")
     if not os.path.exists(lmdb_path):
-        mols = load_molecules(args.dataset, args.hf_split, args.hf_config)
+        mols = load_molecules(args.dataset, args.hf_split, args.hf_config, limit=args.limit, start=args.start)
         n = build_lmdb(mols, lmdb_path)
         print(f"[info] wrote {n} records to {lmdb_path}")
     else:
@@ -398,8 +389,13 @@ def main() -> int:
     print(f"[info] output sha256 {sha256(args.out)}")
 
     if args.verify:
-        _common().verify(
-            args.out, model=MODEL_NAME, reference=args.verify, produced_key=OUTPUT_KEY, reference_key=args.verify_key
+        common.verify(
+            args.out,
+            model=MODEL_NAME,
+            reference=args.verify,
+            produced_key=OUTPUT_KEY,
+            reference_key=args.verify_key,
+            rows=args.verify_rows or (f"{args.start}+" if args.start else None),
         )
 
     if not args.keep_work_dir and args.work_dir is None:

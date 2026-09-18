@@ -33,14 +33,14 @@ What the script computes, per conformer:
   5. the output of the U-Net's ``final_res_block`` -- a (128, G, G, G) feature map -- is
      averaged over the three spatial axes, giving the 128-d embedding.
 
-Two input forms are accepted and produce rows in the same order:
+``--dataset`` takes the input syntax shared by every script in ``baselines/`` (see
+``baselines/common.py``) and every form gives rows in the same order:
 
-  * ``--dataset <dir-or-repo-id>`` -- the ``chirality`` config of the ``EscheWang/3dcs``
-    Hugging Face dataset, either a ``save_to_disk`` directory or a Hub id.  Conformers
-    are taken from the ``mol_blocks`` column, dataset row order, and each row's
-    ``offset`` is checked against the running conformer count.
-  * ``--dataset <file.pkl>`` -- a pickle holding a list of RDKit molecules with one
-    conformer each.
+  * ``hf:EscheWang/3dcs:chirality`` -- the ``chirality`` config of the Hugging Face
+    dataset; a bare Hub id, ``hfdisk:<dir>`` and a plain ``save_to_disk`` directory read
+    the same rows.  Conformers are taken from the ``mol_blocks`` column in ascending
+    ``offset``, and each row's ``offset`` is checked against the running conformer count.
+  * ``<file.pkl>`` -- a pickle holding a list of RDKit molecules with one conformer each.
 
 Output: a compressed ``.npz`` with ``embeddings`` (float32, N x 128) and ``smiles``
 (isomeric SMILES of each input molecule, as written by the RDKit build in use).
@@ -50,7 +50,7 @@ Example
     python extract_chirality.py \
         --fmg-repo /path/to/FMG \
         --checkpoint /path/to/model-120qm9_3rd_run.pt \
-        --dataset /path/to/hf/chirality \
+        --dataset hf:EscheWang/3dcs:chirality \
         --out chirality_fmg.npz \
         --batch-size 32 --device cuda:0
 """
@@ -61,7 +61,6 @@ import argparse
 import hashlib
 import json
 import os
-import pickle
 import platform
 import sys
 import time
@@ -139,52 +138,34 @@ def _record_from_mol(mol, align, allowed, bond_order_map) -> MolRecord | None:
     return MolRecord(coords=coords, atoms=atoms, bonds=bond_array, smiles=smiles)
 
 
-def iter_mols_from_pickle(path: str) -> Iterable:
-    with open(path, "rb") as fh:
-        mols = pickle.load(fh)
-    yield from mols
+def load_molecules(spec: str, *, limit: int | None = None, start: int = 0, revision: str | None = None) -> list:
+    """The input conformers as a list of RDKit molecules, in benchmark row order."""
+    return _common().load_conformers(spec, revision=revision, limit=limit, start=start)
 
 
-def iter_mols_from_hf(dataset: str, revision: str | None) -> Iterable:
-    from rdkit import Chem
+def iter_molecules(args) -> Iterable:
+    """Yield the input conformers as RDKit molecules, in benchmark row order.
 
-    if os.path.isdir(dataset):
-        from datasets import load_from_disk
-
-        ds = load_from_disk(dataset)
-    else:
-        from datasets import load_dataset
-
-        kw = {"name": "chirality", "split": "train"}
-        if revision:
-            kw["revision"] = revision
-        ds = load_dataset(dataset, **kw)
-    seen = 0
-    for row in ds:
-        offset = row.get("offset")
-        if offset is not None and int(offset) != seen:
-            raise RuntimeError(
-                f"row offset {offset} does not match the running conformer count {seen}; "
-                "the dataset is not in its published order"
-            )
-        for block in row["mol_blocks"]:
-            mol = Chem.MolFromMolBlock(block, removeHs=False)
-            seen += 1
-            yield mol
+    ``--dataset`` takes the syntax shared by every script in ``baselines/``
+    (see ``baselines/common.py``): ``hf:<repo_id>[:<config>]``, ``hfdisk:<dir>`` or a plain
+    ``save_to_disk`` directory, a bare Hub dataset id, a pickle of RDKit molecules, or
+    ``lmdb:<file>``.  Hugging Face rows are read in ascending ``offset``, and the offsets
+    are checked against the running conformer count, so the row order is the published one.
+    """
+    return _common().iter_conformers(
+        args.dataset,
+        revision=args.hf_revision,
+        limit=args.limit,
+        start=args.start,
+    )
 
 
 def load_records(args, align) -> list[MolRecord]:
     allowed = set(s.strip() for s in args.atom_channels.split(",") if s.strip())
     bond_order_map = _bond_order_map()
-    if args.dataset.endswith(".pkl") or args.dataset.endswith(".pickle"):
-        source = iter_mols_from_pickle(args.dataset)
-    else:
-        source = iter_mols_from_hf(args.dataset, args.hf_revision)
     records: list[MolRecord] = []
     skipped = 0
-    for mol in source:
-        if args.limit is not None and len(records) >= args.limit:
-            break
+    for mol in iter_molecules(args):
         rec = _record_from_mol(mol, align, allowed, bond_order_map)
         if rec is None:
             skipped += 1
@@ -365,11 +346,7 @@ def parse_args(argv=None):
         description="Extract FMG embeddings for the 3DCS chirality set.",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
-    p.add_argument(
-        "--dataset",
-        required=True,
-        help="HF chirality config (save_to_disk dir or Hub id), or a .pkl of RDKit molecules",
-    )
+    p.add_argument("--dataset", required=True, help=_common().DATASET_SPEC_HELP)
     p.add_argument("--hf-revision", default=None, help="pin the Hub revision when --dataset is a Hub id")
     p.add_argument("--out", required=True, help="output .npz")
     p.add_argument(
@@ -397,7 +374,8 @@ def parse_args(argv=None):
     p.add_argument("--legacy-attention", action="store_true")
     p.add_argument("--add-pe", action="store_true")
     p.add_argument("--class-label", type=int, default=0, help="class-conditioning label fed to the U-Net")
-    p.add_argument("--limit", type=int, default=None, help="only process the first N conformers (debugging)")
+    p.add_argument("--limit", type=int, default=None, help="only process the first N conformers")
+    p.add_argument("--start", type=int, default=0, help="skip the first N conformers")
     p.add_argument(
         "--deterministic",
         action="store_true",
@@ -419,6 +397,7 @@ def parse_args(argv=None):
     p.add_argument(
         "--verify-key", default=None, help="array key to read from the --verify reference (default: its published key)"
     )
+    p.add_argument("--verify-rows", default=None, metavar="ROWS", help=_common().ROW_SELECTION_HELP)
     return p.parse_args(argv)
 
 
@@ -531,7 +510,12 @@ def main(argv=None):
 
     if args.verify:
         _common().verify(
-            out, model=MODEL_NAME, reference=args.verify, produced_key=OUTPUT_KEY, reference_key=args.verify_key
+            out,
+            model=MODEL_NAME,
+            reference=args.verify,
+            produced_key=OUTPUT_KEY,
+            reference_key=args.verify_key,
+            rows=args.verify_rows or (f"{args.start}+" if args.start else None),
         )
 
 

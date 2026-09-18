@@ -70,6 +70,16 @@ def _common():
     return module
 
 
+def load_molecules(spec: str, *, limit: int | None = None, start: int = 0):
+    """Return the input conformers as RDKit molecules, in benchmark row order.
+
+    ``spec`` takes the ``--dataset`` syntax shared by every script in ``baselines/``
+    (see ``baselines/common.py``).  E3FP reads bond orders and stereochemistry, so a MOL
+    block RDKit refuses to sanitise is an error rather than a row read unsanitised.
+    """
+    return _common().load_conformers(spec, limit=limit, start=start, sanitize_fallback=False)
+
+
 def fingerprint(mol):
     """E3FP of conformer 0 of ``mol`` as an RDKit ``ExplicitBitVect``."""
     from e3fp.pipeline import fprints_from_mol
@@ -116,10 +126,9 @@ def run(mols, params: dict, jobs: int, log_every: int) -> list:
 
 
 def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
+    common = _common()
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    p.add_argument(
-        "--dataset", required=True, help="pickle of RDKit Mols, hf:<repo_id>[:<config>], or hfdisk:<save_to_disk dir>"
-    )
+    p.add_argument("--dataset", required=True, help=common.DATASET_SPEC_HELP)
     p.add_argument("--out", required=True, help="output .pkl")
     p.add_argument("--key", default=OUTPUT_KEY, help="dict key written into the pickle (default: e3fp)")
     p.add_argument("--bits", type=int, default=FPRINT_PARAMS["bits"])
@@ -137,6 +146,7 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     p.add_argument("--counts", action="store_true", help="count fingerprint instead of a bit vector")
     p.add_argument("--jobs", type=int, default=1, help="worker processes (default: 1)")
     p.add_argument("--limit", type=int, default=None, help="only process the first N conformers")
+    p.add_argument("--start", type=int, default=0, help="skip the first N conformers")
     p.add_argument("--log-every", type=int, default=5000)
     p.add_argument(
         "--verify",
@@ -151,6 +161,7 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     p.add_argument(
         "--verify-key", default=None, help="dict key to read from the --verify reference (default: its published key)"
     )
+    p.add_argument("--verify-rows", default=None, metavar="ROWS", help=common.ROW_SELECTION_HELP)
     return p.parse_args(argv)
 
 
@@ -172,7 +183,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     }
     print(f"[params] {params}")
 
-    mols = common.load_conformers(args.dataset, limit=args.limit)
+    mols = load_molecules(args.dataset, limit=args.limit, start=args.start)
     print(f"[data] {len(mols)} conformers from {args.dataset}", flush=True)
 
     started = time.time()
@@ -187,7 +198,12 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     if args.verify:
         common.verify(
-            args.out, model=MODEL_NAME, reference=args.verify, produced_key=args.key, reference_key=args.verify_key
+            args.out,
+            model=MODEL_NAME,
+            reference=args.verify,
+            produced_key=args.key,
+            reference_key=args.verify_key,
+            rows=args.verify_rows or (f"{args.start}+" if args.start else None),
         )
     return 0
 

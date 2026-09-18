@@ -28,14 +28,15 @@ See README_unimol.md for exact versions and install commands.
 Usage
 -----
   python extract_chirality.py \
-      --dataset EscheWang/3dcs \
+      --dataset hf:EscheWang/3dcs:chirality \
       --unimol-repo /path/to/Uni-Mol/unimol \
       --weights /path/to/mol_pre_no_h_220816.pt \
       --out chirality_unimol.npz
 
-``--dataset`` accepts a Hugging Face dataset id (config ``chirality``), a
-``save_to_disk`` directory, or a pickle holding RDKit molecules (a list, or a
-dict whose values are lists; dict values are concatenated in insertion order).
+``--dataset`` takes the syntax shared by every script in ``baselines/``:
+``hf:EscheWang/3dcs:chirality``, ``hfdisk:<dir>`` or a plain ``save_to_disk``
+directory, a bare Hub dataset id, or a pickle holding RDKit molecules (a list, or
+a dict whose values are lists; dict values are concatenated in insertion order).
 """
 
 from __future__ import annotations
@@ -59,40 +60,16 @@ DEFAULT_BATCH_SIZE = 256
 # --------------------------------------------------------------------------- #
 # inputs
 # --------------------------------------------------------------------------- #
-def _mol_from_block(block: str):
-    from rdkit import Chem
+def load_molecules(spec: str, *, limit: int | None = None, start: int = 0):
+    """Return the flat, dataset-ordered list of RDKit molecules.
 
-    mol = Chem.MolFromMolBlock(block, removeHs=False, sanitize=True)
-    if mol is None:
-        mol = Chem.MolFromMolBlock(block, removeHs=False, sanitize=False)
-    if mol is None:
-        raise ValueError("RDKit could not parse a mol block")
-    return mol
-
-
-def load_molecules(spec: str):
-    """Return the flat, dataset-ordered list of RDKit molecules."""
-    path = Path(spec)
-    if path.is_file():
-        with path.open("rb") as fh:
-            obj = pickle.load(fh)
-        if isinstance(obj, dict):
-            mols = [m for _, v in obj.items() for m in v]
-        elif isinstance(obj, list):
-            mols = list(obj)
-        else:
-            raise TypeError(f"unsupported pickle content: {type(obj)}")
-        print(f"[data] {len(mols)} molecules from pickle {path}")
-        return mols
-
-    from datasets import load_dataset, load_from_disk
-
-    if path.is_dir():
-        ds = load_from_disk(str(path))
-    else:
-        ds = load_dataset(spec, name="chirality", split="train")
-    mols = [_mol_from_block(b) for row in ds for b in row["mol_blocks"]]
-    print(f"[data] {len(mols)} conformers from {len(ds)} rows of {spec}")
+    ``spec`` takes the ``--dataset`` syntax shared by every script in ``baselines/``
+    (see ``baselines/common.py``): ``hf:<repo_id>[:<config>]``, ``hfdisk:<dir>`` or a plain
+    ``save_to_disk`` directory, a bare Hub dataset id, a pickle of RDKit molecules, or
+    ``lmdb:<file>``.  Uni-Mol reads element symbols and coordinates only.
+    """
+    mols = _common().load_conformers(spec, limit=limit, start=start)
+    print(f"[data] {len(mols)} conformers from {spec}")
     return mols
 
 
@@ -289,10 +266,9 @@ def print_versions(weights: Path):
 
 
 def main() -> int:
+    common = _common()
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument(
-        "--dataset", required=True, help="HF dataset id (config chirality), save_to_disk dir, or a pickle of RDKit mols"
-    )
+    ap.add_argument("--dataset", required=True, help=common.DATASET_SPEC_HELP)
     ap.add_argument("--out", required=True, help="output .npz (single array under key arr_0)")
     ap.add_argument("--unimol-repo", required=True, help="the unimol/ project directory of a Uni-Mol checkout")
     ap.add_argument("--weights", required=True, help="mol_pre_no_h_220816.pt")
@@ -307,6 +283,8 @@ def main() -> int:
         help="Uni-Core seed; the inference pipeline is deterministic, so it does not "
         "change the output (masking is disabled and one conformer is stored)",
     )
+    ap.add_argument("--limit", type=int, default=None, help="only process the first N conformers")
+    ap.add_argument("--start", type=int, default=0, help="skip the first N conformers")
     ap.add_argument("--work-dir", default=None, help="scratch directory for the LMDB")
     ap.add_argument("--keep-work", action="store_true")
     ap.add_argument(
@@ -322,6 +300,7 @@ def main() -> int:
     ap.add_argument(
         "--verify-key", default=None, help="array key to read from the --verify reference (default: its published key)"
     )
+    ap.add_argument("--verify-rows", default=None, metavar="ROWS", help=common.ROW_SELECTION_HELP)
     a = ap.parse_args()
 
     repo = Path(a.unimol_repo).resolve()
@@ -342,7 +321,7 @@ def main() -> int:
     subset = "mols"
 
     try:
-        mols = load_molecules(a.dataset)
+        mols = load_molecules(a.dataset, limit=a.limit, start=a.start)
         n = build_lmdb(mols, data_dir / (subset + ".lmdb"))
         del mols
         lmdb_name = data_dir / (subset + ".lmdb")
@@ -361,8 +340,13 @@ def main() -> int:
         print(f"[out ] sha256={sha256(out)}")
 
         if a.verify:
-            _common().verify(
-                out, model=MODEL_NAME, reference=a.verify, produced_key=OUTPUT_KEY, reference_key=a.verify_key
+            common.verify(
+                out,
+                model=MODEL_NAME,
+                reference=a.verify,
+                produced_key=OUTPUT_KEY,
+                reference_key=a.verify_key,
+                rows=a.verify_rows or (f"{a.start}+" if a.start else None),
             )
     finally:
         if not a.keep_work and a.work_dir is None:

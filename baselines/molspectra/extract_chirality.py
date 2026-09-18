@@ -26,7 +26,7 @@ visible in the log.
 Usage
 -----
   python extract_chirality.py \
-      --dataset  chirality_bench_conformers_noised_only_aslist.pkl \
+      --dataset  hf:EscheWang/3dcs:chirality \
       --repo     /path/to/MolSpectra \
       --checkpoint /path/to/et-256.ckpt \
       --out      molspectra_chirality.npz \
@@ -39,7 +39,6 @@ in the order of the input dataset.
 import argparse
 import hashlib
 import os
-import pickle
 import sys
 import time
 
@@ -60,15 +59,7 @@ def _common():
 
 def parse_args():
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    p.add_argument(
-        "--dataset",
-        required=True,
-        help="Conformer source, in the canonical 3DCS row order. Either "
-        "(a) a HF datasets directory saved with save_to_disk from "
-        "EscheWang/3dcs config 'chirality' (rows carry 'mol_blocks'), or "
-        "(b) a pickle holding a list of RDKit Mol, or a dict "
-        "{key: [Mol, ...]} which is flattened in key order.",
-    )
+    p.add_argument("--dataset", required=True, help=_common().DATASET_SPEC_HELP)
     p.add_argument("--repo", required=True, help="Local clone of https://github.com/AzureLeon1/MolSpectra")
     p.add_argument("--checkpoint", required=True, help="TorchMD-NET equivariant-Transformer checkpoint (.ckpt).")
     p.add_argument("--out", required=True, help="Output .npz path.")
@@ -121,6 +112,9 @@ def parse_args():
     p.add_argument(
         "--verify-key", default=None, help="array key to read from the --verify reference (default: its published key)"
     )
+    p.add_argument("--verify-rows", default=None, metavar="ROWS", help=_common().ROW_SELECTION_HELP)
+    p.add_argument("--limit", type=int, default=None, help="only process the first N conformers")
+    p.add_argument("--start", type=int, default=0, help="skip the first N conformers")
     return p.parse_args()
 
 
@@ -132,34 +126,16 @@ def sha256(path):
     return h.hexdigest()
 
 
-def load_conformers(path):
-    """Return a flat list of RDKit Mol in the canonical 3DCS row order."""
-    from rdkit import Chem
+def load_molecules(spec, *, limit=None, start=0):
+    """Return a flat list of RDKit Mol in the canonical 3DCS row order.
 
-    if os.path.isdir(path):  # HF datasets save_to_disk directory
-        from datasets import load_from_disk
-
-        ds = load_from_disk(path)
-        flat = []
-        for row in ds:  # rows are already in the published key order
-            for block in row["mol_blocks"]:
-                mol = Chem.MolFromMolBlock(block, removeHs=False, sanitize=False)
-                if mol is None:
-                    raise ValueError(f"Could not parse a MolBlock in row {row['key']}")
-                flat.append(mol)
-        return flat
-
-    with open(path, "rb") as fh:
-        obj = pickle.load(fh)
-    if isinstance(obj, list):
-        return obj
-    if isinstance(obj, dict):
-        flat = []
-        for key in obj:  # insertion order == the published order
-            val = obj[key]
-            flat.extend(val if isinstance(val, (list, tuple)) else [val])
-        return flat
-    raise TypeError(f"Unsupported pickle payload: {type(obj)}")
+    ``spec`` takes the ``--dataset`` syntax shared by every script in ``baselines/``
+    (see ``baselines/common.py``): ``hf:<repo_id>[:<config>]``, ``hfdisk:<dir>`` or a plain
+    ``save_to_disk`` directory, a bare Hub dataset id, a pickle of RDKit molecules (a list,
+    or a dict of lists flattened in insertion order), or ``lmdb:<file>``.  MolSpectra reads
+    atomic numbers and coordinates only.
+    """
+    return _common().load_conformers(spec, limit=limit, start=start)
 
 
 def main():
@@ -257,7 +233,7 @@ def main():
     model = model.to(device=device, dtype=dtype).eval()
 
     # ---- data -------------------------------------------------------------
-    mols = load_conformers(args.dataset)
+    mols = load_molecules(args.dataset, limit=args.limit, start=args.start)
     n = len(mols)
     print(f"# conformers        {n}", flush=True)
 
@@ -300,7 +276,12 @@ def main():
 
     if args.verify:
         _common().verify(
-            args.out, model=MODEL_NAME, reference=args.verify, produced_key=args.key, reference_key=args.verify_key
+            args.out,
+            model=MODEL_NAME,
+            reference=args.verify,
+            produced_key=args.key,
+            reference_key=args.verify_key,
+            rows=args.verify_rows or (f"{args.start}+" if args.start else None),
         )
 
 
