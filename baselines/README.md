@@ -109,7 +109,8 @@ Notes on individual rows:
   initialises from; with that checkpoint the output is a MolSpectra-architecture embedding of
   the same shape, not a copy of the published file. The published
   `chirality/molspectra/sampled_mol_feature.npz` is the artifact the paper's MolSpectra
-  values were computed from.
+  values were computed from. Its entry in the table above is the largest difference over the
+  five metrics of `reproduce/table2_chirality/expected.csv`; DBI was not recorded for that run.
 - **FMG**: the `smiles` side array of the output is metadata written by the RDKit build in
   use; 108 of 52,391 entries are written differently by rdkit 2024.9.6 than in the published
   file (`[O][Na]` against `O[Na]`), and all 108 re-canonicalise to the same molecule.
@@ -119,7 +120,8 @@ run in float32 on the GPU, where the reduction order depends on the batch size, 
 build and the device. Two runs of the same script on the same machine measure the size of
 that effect — for FMG, two runs with identical settings differ by up to 6e-4 per element, the
 same size as the difference from the published file; for MACE, batch size 1 against 16 moves
-the output by at most 1.4e-7; for GemNet, TF32 on against off moves it by 2.0e-3.
+the output by at most 1.4e-7 on a 128-conformer sample; for GemNet, TF32 on against off moves
+it by 2.0e-3.
 
 ## Input precision
 
